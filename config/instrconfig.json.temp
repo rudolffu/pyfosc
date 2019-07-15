@@ -1,0 +1,6 @@
+{
+    \"mysettings\": {
+        \"telescope\": \"$TELESCOPE\",
+        \"slit\": \"default\"
+    }
+}
