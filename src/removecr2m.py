@@ -1,6 +1,5 @@
 #!/usr/bin/env python
 import glob
-# import pyds9
 from pyraf import iraf
 import multiprocessing as mp
 import sys
@@ -8,7 +7,7 @@ import os
 import json
 
 basepath = os.path.dirname(sys.argv[0])
-lacos_im = basepath + '/iraf_tasks/lacos_im.cl'
+lacos_im = os.path.join(basepath, '../iraf_tasks/lacos_im.cl')
 
 with open('myfosc.json') as file:
     settings = json.loads(file.read())

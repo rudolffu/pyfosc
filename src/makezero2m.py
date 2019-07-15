@@ -3,7 +3,6 @@
 import glob
 import os
 import shutil
-# import pyds9
 from pyraf import iraf
 
 
@@ -24,18 +23,5 @@ iraf.ccdred.zerocombine.reject = 'ccdclip'
 iraf.ccdred.zerocombine.rdnoise = 'rdnoise'
 iraf.ccdred.zerocombine.gain = 'gain'
 iraf.ccdred.zerocombine(input='@zero.list')
-
-# for zero in zerolist:
-#     os.remove(zero)
-#
-# print('openning a ds9 window if not already openned...')
-# pyds9.DS9()
-#
-# # check output image
-# print('Check output file:')
-# iraf.imstatistics('Zero')
-#
-# print(' Running "imexamine" task..')
-# iraf.imexamine('Zero', 1)
 
 print('--- DONE ---')

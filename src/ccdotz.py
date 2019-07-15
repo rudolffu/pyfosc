@@ -3,7 +3,6 @@
 import glob
 import os
 import shutil
-import pyds9
 from pyraf import iraf
 import json
 

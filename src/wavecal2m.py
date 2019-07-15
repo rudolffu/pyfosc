@@ -7,17 +7,17 @@ import sys
 import os
 
 basepath = os.path.dirname(sys.argv[0])
-myonedstds = basepath + '/iraf_data/onedstds'
+myonedstds = os.path.join(basepath, '../iraf_data/onedstds')
 with open('myfosc.json') as file:
     settings = json.loads(file.read())
 teles = settings['mysettings']['telescope']
 if teles == "XLT":
     print("Settings for XLT will be used.")
-    extinct = basepath + '/extinction/baoextinct.dat'
+    extinct = os.path.join(basepath, '../extinction/baoextinct.dat')
     midname = 'XL'
 elif teles == "LJT":
     print("Settings for LJT will be used.")
-    extinct = basepath + '/extinction/LJextinct.dat'
+    extinct = os.path.join(basepath, '../extinction/LJextinct.dat')
     midname = 'LJ'
 else:
     print("Error detected.")

@@ -2,7 +2,6 @@
 import glob
 import os
 import shutil
-# import pyds9
 from pyraf import iraf
 
 
@@ -25,17 +24,5 @@ iraf.ccdred.flatcombine.rdnoise = 'rdnoise'
 iraf.ccdred.flatcombine.gain = 'gain'
 iraf.ccdred.flatcombine.output = 'Flat'
 iraf.ccdred.flatcombine(input='@flat.list')
-
-# for file in flatlist:
-#     os.remove(file)
-#
-# print('openning a ds9 window if not already openned...')
-# pyds9.DS9()
-#
-# # check output flat image
-# print('Check output file:')
-# iraf.imstatistics('Flat')
-# print(' Running "imexamine" task..')
-# iraf.imexamine('Flat', 1)
 
 print('--- DONE ---')
