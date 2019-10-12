@@ -5,6 +5,8 @@ import matplotlib.pyplot as plt
 import multiprocessing as mp
 from astropy.io import fits
 import numpy as np
+import json
+
 
 SMALL_SIZE = 14
 MEDIUM_SIZE = 16
@@ -46,7 +48,18 @@ class Spiraf():
         plt.savefig(self.name + '_spec.pdf', dpi=300)
 
 
-sfiles = glob.glob('J*fits')
+with open('myfosc.json') as file:
+    settings = json.loads(file.read())
+teles = settings['mysettings']['telescope']
+if teles == "XLT":
+    print("Settings for XLT will be used.")
+    sfiles = glob.glob('*XL*fits')
+elif teles == "LJT":
+    print("Settings for LJT will be used.")
+    sfiles = glob.glob('*LJ*fits')
+else:
+    print("Error detected.")
+
 for sp in sfiles:
     spec = Spiraf(sp)
     spec.plot()

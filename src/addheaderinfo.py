@@ -65,7 +65,7 @@ otbl['ut'] = map(UtcHours, otbl['utctime'])
 
 iraf.twodspec()
 iraf.longslit()
-allimg = glob.glob('*.fit')
+allimg = glob.glob('*.fit*')
 for img in allimg:
     iraf.hedit.add = True
     iraf.hedit.addonly = True

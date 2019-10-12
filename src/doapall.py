@@ -16,14 +16,7 @@ iraf.ccdred.combine.unlearn()
 iraf.apextract.apall.unlearn()
 iraf.apextract.dispaxis = 1
 iraf.apextract.verbose = 'no'
-# # regular expression of files (e.g bias_00*.fits, flat-2000jan01_?.*)
-# imre = str(raw_input('Enter regular expression for images: '))
-# imlist = glob.glob(imre)
-# imin = ', '.join(imlist)
-#
-# ref = str(raw_input('Enter reference aperture image (or Hit Enter): '))
 
-# extract aperture spectra for science images
 print('Extracting object aperture spectrum...')
 iraf.apextract.apall.unlearn()
 iraf.apextract.apall.readnoise = 'rdnoise'
