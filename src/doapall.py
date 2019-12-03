@@ -1,7 +1,19 @@
 #!/usr/bin/env python
 import glob
 from pyraf import iraf
+import json
 
+with open('myfosc.json') as file:
+    settings = json.loads(file.read())
+teles = settings['mysettings']['telescope']
+if teles == "XLT":
+    print("Settings for XLT will be used.")
+    disp_axis = 1
+elif teles == "LJT":
+    print("Settings for LJT will be used.")
+    disp_axis = 2
+else:
+    disp_axis = str(raw_input("Dispersion axis: 1 for line; 2 for column."))
 
 print('Loading IRAF packages ...')
 iraf.imred()
@@ -14,7 +26,7 @@ iraf.ccdred.unlearn()
 iraf.ccdred.ccdproc.unlearn()
 iraf.ccdred.combine.unlearn()
 iraf.apextract.apall.unlearn()
-iraf.apextract.dispaxis = 1
+iraf.apextract.dispaxis = disp_axis
 iraf.apextract.verbose = 'no'
 
 print('Extracting object aperture spectrum...')

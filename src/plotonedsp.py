@@ -29,6 +29,7 @@ mpl.rcParams['mathtext.rm'] = 'serif'
 class Spiraf():
     def __init__(self, fname):
         hdu = fits.open(fname)
+        self.fname = fname
         self.name = fits.getheader(fname)['object']
         CRVAL1 = hdu[0].header['CRVAL1']
         CD1_1 = hdu[0].header['CD1_1']
@@ -37,29 +38,35 @@ class Spiraf():
         self.wave = np.linspace(CRVAL1, CRVAL1 + (l - CRPIX1) * CD1_1, l)
         self.flux = hdu[0].data
 
-    def plot(self, axlim='auto'):
+    def plot(self, axlim='auto', xrange=[3800, 9000]):
         plt.figure(figsize=(8, 6))
         plt.plot(self.wave, self.flux, lw=1)
-        plt.xlim([3800, 9000])
+        plt.xlim(xrange)
         plt.ylim(bottom=0)
         plt.xlabel(r'$\mathrm{Wavelength(\AA})$')
         plt.ylabel(r'$\mathrm{Flux(erg/s/cm^{2}/\AA)}$')
-        plt.title('Spectrum of ' + self.name)
-        plt.savefig(self.name + '_spec.pdf', dpi=300)
+        plt.title('Spectrum of ' + self.name.replace('_',' '))
+        plt.savefig(self.fname.strip(".fits") + '_spec.pdf', dpi=300)
 
 
 with open('myfosc.json') as file:
     settings = json.loads(file.read())
 teles = settings['mysettings']['telescope']
+Grism = settings['mysettings']['Grism']
 if teles == "XLT":
     print("Settings for XLT will be used.")
     sfiles = glob.glob('*XL*fits')
+    xr = [3800, 9000]
 elif teles == "LJT":
     print("Settings for LJT will be used.")
+    if Grism == "G3":
+        xr = [3800, 9000]
+    elif Grism == "G14":
+        xr = [3100, 7600]
     sfiles = glob.glob('*LJ*fits')
 else:
     print("Error detected.")
 
 for sp in sfiles:
     spec = Spiraf(sp)
-    spec.plot()
+    spec.plot(xrange=xr)

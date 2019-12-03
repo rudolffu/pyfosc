@@ -10,6 +10,7 @@ with open('myfosc.json') as file:
     settings = json.loads(file.read())
 
 teles = settings['mysettings']['telescope']
+Grism = settings['mysettings']['Grism']
 
 
 print('Loading IRAF packages ...')
@@ -39,8 +40,12 @@ if teles == "XLT":
                         trim='yes', zerocor='yes', zero='Zero')
 elif teles == "LJT":
     print("Settings for LJT will be used.")
-    iraf.ccdred.ccdproc.biassec = '[10:40,2301:4200]'
-    iraf.ccdred.ccdproc.trimsec = '[751:1450,2301:4200]'
+    if Grism == "G3":
+        iraf.ccdred.ccdproc.biassec = '[10:40,2301:4200]'
+        iraf.ccdred.ccdproc.trimsec = '[751:1450,2301:4200]'
+    elif Grism == "G14":
+        iraf.ccdred.ccdproc.biassec = '[10:40,1901:4200]'
+        iraf.ccdred.ccdproc.trimsec = '[751:1450,1901:4200]'
     iraf.ccdred.ccdproc(images='@flatnall.list', overscan='yes',
                         trim='yes', zerocor='yes', zero='Zero')
 else:

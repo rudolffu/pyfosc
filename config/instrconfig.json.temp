@@ -1,6 +1,7 @@
 {
     \"mysettings\": {
         \"telescope\": \"$TELESCOPE\",
-        \"slit\": \"default\"
+        \"slit\": \"$slit\",
+        \"Grism\": \"$Grism\"
     }
 }
