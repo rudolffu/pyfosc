@@ -27,12 +27,6 @@ if [ ! -d "./raw" ]; then
 else
   printf "Directory \"raw\" already exists.\n"
 fi
-if [ ! -d "./raw" ]; then
-  mkdir ./raw
-  printf "Directory \"raw\" is created.\n"
-else
-  printf "Directory \"raw\" already exists.\n"
-fi
 printf "============================================================\n"
 title="Please select the instrument with which you took the spectra."
 prompt="Enter number after the prompt:"
