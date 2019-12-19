@@ -45,7 +45,7 @@ class Spiraf():
         plt.ylim(bottom=0)
         plt.xlabel(r'$\mathrm{Wavelength(\AA})$')
         plt.ylabel(r'$\mathrm{Flux(erg/s/cm^{2}/\AA)}$')
-        plt.title('Spectrum of ' + self.name.replace('_',' '))
+        plt.title('Spectrum of ' + self.name.replace('_', ' '))
         plt.savefig(self.fname.strip(".fits") + '_spec.pdf', dpi=300)
 
 
