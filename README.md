@@ -60,7 +60,14 @@ Select `xgterm` when the terminal prompts. Then run `pyfosc_init` from `iraf27` 
 pyfosc_init
 ```
 
-#### 2.1.2 Generate lists of files
+#### 2.1.2 Update headers for BFOSC data obtained with 2.16-m Telescope, Xinglong Station, NAOC (BAO).
+Activate `iraf27` env and run `addheaderinfo.py`.
+```bash
+source activate iraf27
+addheaderinfo.py
+```
+
+#### 2.1.3 Generate lists of files
 
 As PyFOSC pipeline reduce data grouped by different types (bias, flat, object, etc), make sure you have lists of fits files as follows:
 ```
@@ -73,13 +80,6 @@ specall.list ------------ List of all 2d spectra images (objall.list + lampall.l
 ```
 
 The `pyfosc$iraf_scripts` directory contains template `cl` scripts that can be executed in IRAF/PyRAF to generate these lists. Users can modify the scripts for specific cases.  
-
-#### 2.1.3 Update headers for BFOSC data obtained with 2.16-m Telescope, Xinglong Station, NAOC (BAO).
-Activate `iraf27` env and run `addheaderinfo.py`.
-```bash
-source activate iraf27
-addheaderinfo.py
-```
 
 ### 2.2 Running the pipeline
 You can run `pyfosc_run.sh` from `iraf27` env:
