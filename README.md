@@ -112,6 +112,11 @@ mvintmd.sh
 
 ## 3. Credits
 
+This software uses BSD 3-Clause License.  
+
+Copyright (c) 2019, Yuming Fu  
+All rights reserved.  
+
 This software contains sources from third-party softwares.  
 
 The `pyfosc$iraf_data/onedstds` directory is from `IRAF`, and it contains standard calibration data for extinction and sensitivity calibration.  
