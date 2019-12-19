@@ -1,5 +1,9 @@
 # PyFOSC
-PyFOSC is a pipeline toolbox for spectroscopic data reduction written in Python. It can be used for FOSC data from Xinglong/Lijiang 2-meter telescopes.
+PyFOSC is a pipeline toolbox for spectroscopic data reduction written in Python. It can be used for FOSC (Faint Object Spectrograph and Camera) data from Xinglong/Lijiang 2-meter telescopes.  
+
+BFOSC (Beijing-Faint Object Spectrograph and Camera) is an instrument of the 2.16-m Telescope in Xinglong Observatory, National Astronomical Observatories, Chinese Academy of Sciences (NAOC) (IAU code: 327, coordinates: 40°23′39″ N, 117°34′30″ E). For more information about BFOSC, please see http://www.xinglong-naoc.org/html/en/gcyq/216/detail-18.html.
+
+(Yunnan-Faint Object Spectrograph and Camera) is an instrument of the 2.4-m Telescope in Lijiang Observatory, Yunnan Observatories, Chinese Academy of Sciences (YNAO) (IAU code: O44, coordinates: 26°42′33.1″ N, 100°1′51.6″ E). For more information about YFOSC, please see http://wiki.gmg.org.cn/pages/viewpage.action?pageId=557106.
 
 ## 1. Installation
 ### 1.1. Dependencies
@@ -92,7 +96,7 @@ divideflat2m.py   # Do flat correction.
 removecr2m.py     # Remove cosmic rays in 2d images. Please go to 3. Credits for more information.
 doapall.py        # Extract spectra.
 reidentlamp2m.py  # Reidentify lamp spectra with previously stored ones.
-#Can use identlamp2m.py instead to identify lamp oneself.
+#Can use identlamp2m.py instead to identify lamp by oneself.
 wavecal2m.py      # Do wavelength calibration, flux calibration and extract 1d spectra.
 ```
 
@@ -108,7 +112,10 @@ mvintmd.sh
 
 ## 3. Credits
 
-This software contains sources from third-party softwares:  
-The `pyfosc$iraf_data/onedstds` directory from `IRAF`, contains standard calibration data for extinction and sensitivity calibration.  
+This software contains sources from third-party softwares.  
+
+The `pyfosc$iraf_data/onedstds` directory is from `IRAF`, and it contains standard calibration data for extinction and sensitivity calibration.  
+
 The `pyfosc$iraf_task/lacos_im.cl` script is the `IRAF` version for Laplacian Cosmic Ray Identification by Pieter G. van Dokkum (Yale) from http://www.astro.yale.edu/dokkum/lacosmic/. L.A.Cosmic is an algorithm for robust cosmic ray identification. It detects cosmic rays of arbitrary shapes and sizes, and distinguishes between undersampled point sources and cosmic rays. If you use this program please refer to P. G. van Dokkum, 2001, PASP, 113, 1420.  
+  
 Please see `COPYRIGHT` file and `pyfosc$doc/LICENSES` directory for detailed copyright information.  
