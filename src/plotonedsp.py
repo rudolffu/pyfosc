@@ -38,7 +38,7 @@ class Spiraf():
         self.wave = np.linspace(CRVAL1, CRVAL1 + (l - CRPIX1) * CD1_1, l)
         self.flux = hdu[0].data
 
-    def plot(self, axlim='auto', xrange=[3800, 9000]):
+    def plot(self, axlim='auto', xrange=[3800, 8400]):
         plt.figure(figsize=(8, 6))
         plt.plot(self.wave, self.flux, lw=1)
         plt.xlim(xrange)
@@ -60,7 +60,7 @@ if teles == "XLT":
 elif teles == "LJT":
     print("Settings for LJT will be used.")
     if Grism == "G3":
-        xr = [3800, 9000]
+        xr = [3800, 8400]
     elif Grism == "G14":
         xr = [3100, 7600]
     sfiles = glob.glob('*LJ*fits')

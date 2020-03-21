@@ -35,14 +35,17 @@ iraf.ccdred.ccdproc.flatcor = False
 
 if teles == "XLT":
     print("Settings for XLT will be used.")
-    iraf.ccdred.ccdproc.trimsec = '[1:1800,701:1300]'
+    iraf.ccdred.ccdproc.trimsec = '[51:1750,881:1350]'
     iraf.ccdred.ccdproc(images='@flatnall.list', overscan='no',
                         trim='yes', zerocor='yes', zero='Zero')
 elif teles == "LJT":
     print("Settings for LJT will be used.")
     if Grism == "G3":
-        iraf.ccdred.ccdproc.biassec = '[10:40,2301:4200]'
-        iraf.ccdred.ccdproc.trimsec = '[751:1450,2301:4200]'
+        iraf.ccdred.ccdproc.biassec = '[10:40,2301:4130]'
+        iraf.ccdred.ccdproc.trimsec = '[751:1450,2301:4130]'
+        # If you want more trimming on the blue side, use:
+        # iraf.ccdred.ccdproc.biassec = '[10:40,2491:4130]'
+        # iraf.ccdred.ccdproc.trimsec = '[751:1450,2491:4130]'
     elif Grism == "G14":
         iraf.ccdred.ccdproc.biassec = '[10:40,1901:4200]'
         iraf.ccdred.ccdproc.trimsec = '[751:1450,1901:4200]'

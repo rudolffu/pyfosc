@@ -6,7 +6,7 @@ else
   printf "Directory \"INTMD\" already exists.\n"
 fi
 mv mask*fits ./INTMD/
-mv f*fits ./INTMD/
+mv f*fit* ./INTMD/
 mv crf*fits ./INTMD/
 mv acrf*fits ./INTMD/
-mv 0*fits ./INTMD/
+mv 0*fit* ./INTMD/
