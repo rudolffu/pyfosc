@@ -40,8 +40,8 @@ git clone https://github.com/rudolffu/pyfosc.git
 ```
 In order to run PyFOSC commands in the terminal, you need to add the path of PyFOSC and its sub-directory `src` to $PATH, by editing `~/.bashrc` (Linux, e.g., Ubuntu) or `~/.bash_profile` (Mac OS). An example of this can be:
 ```Bash
-export PATH=/Your/Path/to/pydbsp:$PATH
-export PATH=/Your/Path/to/pydbsp/src:$PATH
+export PATH=/Your/Path/to/pyfosc:$PATH
+export PATH=/Your/Path/to/pyfosc/src:$PATH
 ```
 
 ## 2. Usage
