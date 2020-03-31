@@ -126,3 +126,24 @@ The `pyfosc$iraf_data/onedstds` directory is from `IRAF`, and it contains standa
 The `pyfosc$iraf_task/lacos_im.cl` script is the `IRAF` version for Laplacian Cosmic Ray Identification by Pieter G. van Dokkum (Yale) from http://www.astro.yale.edu/dokkum/lacosmic/. L.A.Cosmic is an algorithm for robust cosmic ray identification. It detects cosmic rays of arbitrary shapes and sizes, and distinguishes between undersampled point sources and cosmic rays. If you use this program please refer to P. G. van Dokkum, 2001, PASP, 113, 1420.  
 
 Please see `COPYRIGHT` file and `pyfosc$doc/LICENSES` directory for detailed copyright information.  
+
+## 4. How to cite
+
+Yuming Fu. (2020, March 31). PyFOSC: a pipeline toolbox for long-slit spectroscopy data reduction for China's 2-meter telescopes (Version v1.0.0). Zenodo. http://doi.org/10.5281/zenodo.3735105
+
+Cite the current version (v1.0.0) with bibtex:  
+
+```
+@software{yuming_fu_2020_3735105,
+  author       = {Yuming Fu},
+  title        = {{PyFOSC: a pipeline toolbox for long-slit
+                   spectroscopy data reduction for China's 2-meter
+                   telescopes}},
+  month        = mar,
+  year         = 2020,
+  publisher    = {Zenodo},
+  version      = {v1.0.0},
+  doi          = {10.5281/zenodo.3735105},
+  url          = {https://doi.org/10.5281/zenodo.3735105}
+}
+```
