@@ -44,7 +44,7 @@ olog = pd.read_fwf(logfile, sep='\s+', skiprows=10)
 olog['filen'] = map(MyFilen, olog['Files'])
 narows = olog[olog.isna().any(axis=1)]
 print(narows[['Obj', 'filen', 'Exp.(s)']])
-lampspec = str(raw_input("Enter filename(s) of cal lamp\
+lampspec = str(raw_input("Enter filename(s) of cal lamp \
 spectrum(a) with longer exposures (separated by ',' for more than 1): "))
 lamplist = re.split(',|,\s+', lampspec)
 for img in lamplist:
