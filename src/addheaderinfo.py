@@ -36,6 +36,8 @@ xinglong = EarthLocation.of_site('beijing xinglong observatory')
 gain = 1.41
 ron = 4.64
 txtlist = glob.glob('*.txt')
+fitslist = glob.glob('*.fit*')
+fitslist = pd.DataFrame(fitslist, columns=['filen'])
 print('Possible log file in this folder:\n' + ", ".join(p for p in txtlist))
 logfile = str(raw_input("Enter filename of the log file: "))
 olog = pd.read_fwf(logfile, sep='\s+', skiprows=10)
@@ -46,12 +48,15 @@ lampspec = str(raw_input("Enter filename(s) of cal lamp\
 spectrum(a) with longer exposures (separated by ',' for more than 1): "))
 lamplist = re.split(',|,\s+', lampspec)
 for img in lamplist:
-    iraf.hedit.add = True
-    iraf.hedit.addonly = True
-    iraf.hedit.delete = False
-    iraf.hedit.update = True
-    iraf.hedit.verify = False
-    iraf.hedit(img, fields='object', value='fear')
+    try:
+        iraf.hedit.add = True
+        iraf.hedit.addonly = True
+        iraf.hedit.delete = False
+        iraf.hedit.update = True
+        iraf.hedit.verify = False
+        iraf.hedit(img, fields='object', value='fear')
+    except:
+        pass
 
 otbl = olog.dropna(subset=['R.A.', 'Dec.']).reset_index(drop=True)
 otbl['hmsdms'] = otbl['R.A.'] + otbl['Dec.']
@@ -59,9 +64,11 @@ coord = SkyCoord(otbl['hmsdms'].values, frame='icrs',
                  unit=(u.hourangle, u.deg))
 otbl['rah'] = coord.ra.to(u.hourangle).value
 otbl['decdeg'] = coord.dec.to(u.degree).value
-otbl['utctime'] = map(NewUtc, otbl['filen'])
-otbl['st'] = map(NewSt, otbl['utctime'])
-otbl['ut'] = map(UtcHours, otbl['utctime'])
+notbl = otbl.merge(fitslist, on="filen")
+notbl['utctime'] = map(NewUtc, notbl['filen'])
+notbl['st'] = map(NewSt, notbl['utctime'])
+notbl['ut'] = map(UtcHours, notbl['utctime'])
+
 
 iraf.twodspec()
 iraf.longslit()
@@ -76,22 +83,28 @@ for img in allimg:
     iraf.hedit(img, fields='rdnoise', value=ron)
     iraf.hedit(img, fields='epoch', value=2000.0)
 
-for i in range(len(otbl)):
-    iraf.hedit.add = True
-    iraf.hedit.addonly = True
-    iraf.hedit.delete = False
-    iraf.hedit.update = True
-    iraf.hedit.verify = False
-    iraf.hedit(images=otbl['filen'][i], fields='ra', value=otbl['rah'][i])
-    iraf.hedit(images=otbl['filen'][i], fields='dec', value=otbl['decdeg'][i])
-    iraf.hedit(images=otbl['filen'][i], fields='object', value=otbl['Obj'][i])
-    iraf.hedit(images=otbl['filen'][i], fields='st', value=otbl['st'][i])
-    iraf.hedit(images=otbl['filen'][i], fields='ut', value=otbl['ut'][i])
-    iraf.longslit.setairmass(images=otbl['filen'][i],
-                             observatory='bao',
-                             ra='ra',
-                             dec='dec',
-                             equinox='epoch',
-                             st='st',
-                             ut='ut',
-                             date='date-obs')
+for i in range(len(notbl)):
+    try:
+        iraf.hedit.add = True
+        iraf.hedit.addonly = True
+        iraf.hedit.delete = False
+        iraf.hedit.update = True
+        iraf.hedit.verify = False
+        iraf.hedit(images=notbl['filen'][i],
+                   fields='ra', value=notbl['rah'][i])
+        iraf.hedit(images=notbl['filen'][i],
+                   fields='dec', value=notbl['decdeg'][i])
+        iraf.hedit(images=notbl['filen'][i],
+                   fields='object', value=notbl['Obj'][i])
+        iraf.hedit(images=notbl['filen'][i], fields='st', value=notbl['st'][i])
+        iraf.hedit(images=notbl['filen'][i], fields='ut', value=notbl['ut'][i])
+        iraf.longslit.setairmass(images=notbl['filen'][i],
+                                 observatory='bao',
+                                 ra='ra',
+                                 dec='dec',
+                                 equinox='epoch',
+                                 st='st',
+                                 ut='ut',
+                                 date='date-obs')
+    except:
+        pass
