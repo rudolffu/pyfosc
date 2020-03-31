@@ -129,16 +129,15 @@ Please see `COPYRIGHT` file and `pyfosc$doc/LICENSES` directory for detailed cop
 
 ## 4. How to cite
 
-Yuming Fu. (2020, March 31). PyFOSC: a pipeline toolbox for long-slit spectroscopy data reduction for China's 2-meter telescopes (Version v1.0.0). Zenodo. http://doi.org/10.5281/zenodo.3735105
+Yuming Fu. (2020, March 31). PyFOSC: a pipeline toolbox for BFOSC/YFOSC long-slit spectroscopy data reduction (Version v1.0.0). Zenodo. http://doi.org/10.5281/zenodo.3735105
 
 Cite the current version (v1.0.0) with bibtex:  
 
 ```
 @software{yuming_fu_2020_3735105,
   author       = {Yuming Fu},
-  title        = {{PyFOSC: a pipeline toolbox for long-slit
-                   spectroscopy data reduction for China's 2-meter
-                   telescopes}},
+  title        = {{PyFOSC: a pipeline toolbox for BFOSC/YFOSC long-
+                   slit spectroscopy data reduction}},
   month        = mar,
   year         = 2020,
   publisher    = {Zenodo},
