@@ -61,6 +61,8 @@ elif teles == "LJT":
     print("Settings for LJT will be used.")
     if Grism == "G3":
         xr = [3800, 8400]
+    elif Grism == "G10":
+        xr = [4200, 8600]
     elif Grism == "G14":
         xr = [3100, 7600]
     sfiles = glob.glob('*LJ*fits')
