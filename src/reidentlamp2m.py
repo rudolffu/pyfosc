@@ -17,10 +17,12 @@ if teles == "XLT":
     print("Settings for XLT will be used.")
     lamplist = [os.path.basename(x) for x in glob.glob(
         dbpath + '/lamp_XL*fits')]
+    linelists = 'linelists$fear.dat'
 elif teles == "LJT":
     print("Settings for LJT will be used.")
     lamplist = [os.path.basename(x) for x in glob.glob(
         dbpath + '/lamp_LJ*fits')]
+    linelists = 'linelists$henear.dat'
 else:
     print("Error detected.")
 
@@ -34,12 +36,12 @@ copy2(dbpath + '/id' + refspec.strip('.fits'), CWD + '/database')
 iraf.onedspec()
 iraf.onedspec.reidentify.unlearn()
 # iraf.onedspec.reidentify.fwidth = 10
-iraf.onedspec.reidentify.coordli = 'linelists$henear.dat'
+iraf.onedspec.reidentify.coordli = linelists
 iraf.onedspec.reidentify(reference=refspec1,
                          images='af*fits')
 
 iraf.onedspec.identify.unlearn()
 iraf.onedspec.identify.fwidth = 10
-iraf.onedspec.identify.coordli = 'linelists$henear.dat'
+iraf.onedspec.identify.coordli = linelists
 iraf.onedspec.identify(images='af*fits')
 print('---DONE---')
