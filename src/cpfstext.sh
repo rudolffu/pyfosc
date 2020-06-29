@@ -1,6 +1,13 @@
 #! /bin/sh
 ls YF*fits > templist
-cat templist | parallel -j8 cpfstext.py
+{
+  command -v parallel && cat templist | parallel -j8 cpfstext.py
+} || {
+for file in YF*fits 
+do
+    cpfstext.py $file
+done
+}
 if [ ! -d "./raw" ]; then
   mkdir ./raw
 fi

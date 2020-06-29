@@ -7,7 +7,8 @@ done
 
 for name in 20*fit
 do
-    newname="$(echo "$name" | cut -c 10-)"
+    # newname="$(echo "$name" | cut -c 11-)"
+    newname="${name:(-8)}"
     cp "$name" "$newname"
 done
 if [ ! -d "./raw" ]; then

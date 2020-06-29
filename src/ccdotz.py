@@ -35,7 +35,10 @@ iraf.ccdred.ccdproc.flatcor = False
 
 if teles == "XLT":
     print("Settings for XLT will be used.")
-    iraf.ccdred.ccdproc.trimsec = '[51:1750,881:1350]'
+    if Grism == "G4":
+        iraf.ccdred.ccdproc.trimsec = '[51:1750,681:1350]'
+    elif Grism == "G7":
+        iraf.ccdred.ccdproc.trimsec = '[51:2000,681:1350]'
     iraf.ccdred.ccdproc(images='@flatnall.list', overscan='no',
                         trim='yes', zerocor='yes', zero='Zero')
 elif teles == "LJT":

@@ -39,11 +39,13 @@ select opt in "${options[@]}" "Quit"; do
     case "$REPLY" in
 
     1 ) printf "============================================================\n"
-    echo "You picked $opt which is option $REPLY."
     TELESCOPE="XLT"
-    render_template $BASEDIR/config/instrconfig.json.temp > ./myfosc.json
     cp $BASEDIR/iraf_scripts/genlistXLT.cl $CWD
+    echo "You picked $opt which is option $REPLY."
     while true; do
+    # read -p "Enter the slit you have used (e.g. slit2.5):" slit
+    read -p "Enter the Grism you have used (e.g. G4):" Grism
+    render_template $BASEDIR/config/instrconfig.json.temp > ./myfosc.json
     read -p "Do you want to copy the raw files to ./raw?[y/n]" yn
         case $yn in
           [Yy]* ) bash $BASEDIR/src/cpxlraw.sh; echo "Raw data is backuped and copied to ./raw."; exit;;
