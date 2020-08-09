@@ -37,6 +37,9 @@ for img in inputlist:
 
 olist1 = glob.glob('w*fits')
 print('Spectra after wavelength calibration:\n' + ", ".join(p for p in olist1))
+iraf.images()
+iraf.images.imutil()
+iraf.images.imutil.imheader(images="wacrf*fits")
 stdspec = str(raw_input("Enter filename of the standard star spectrum: "))
 starname = str(raw_input("Enter name of the standard star: "))
 stdspec1 = stdspec.strip('.fits') + '.fits'
