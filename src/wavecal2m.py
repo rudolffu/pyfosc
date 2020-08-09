@@ -72,13 +72,13 @@ for obj in olist2:
                                      output='c' + obj,
                                      sensitivity='sens')
 
-print('Copy to onedspec...')
-iraf.twodspec.longslit.scopy.unlearn()
-olist3 = glob.glob('cwac*fits')
-for obj in olist3:
-    objind = str(olist3.index(obj) + 1)
-    objname = fits.getheader(obj)['OBJECT'] + \
-        '_' + midname + objind + '_' + starname
-    iraf.twodspec.longslit.scopy(input=obj, output=objname, bands=1,
-                                 format='onedspec')
+# print('Copy to onedspec...')
+# iraf.twodspec.longslit.scopy.unlearn()
+# olist3 = glob.glob('cwac*fits')
+# for obj in olist3:
+#     objind = str(olist3.index(obj) + 1)
+#     objname = fits.getheader(obj)['OBJECT'] + \
+#         '_' + midname + objind + '_' + starname
+#     iraf.twodspec.longslit.scopy(input=obj, output=objname, bands=1,
+#                                  format='onedspec')
 print('---DONE---')

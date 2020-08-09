@@ -34,8 +34,8 @@ class Spiraf():
         CRVAL1 = hdu[0].header['CRVAL1']
         CD1_1 = hdu[0].header['CD1_1']
         CRPIX1 = hdu[0].header['CRPIX1']
-        l = len(hdu[0].data)
-        self.wave = np.linspace(CRVAL1, CRVAL1 + (l - CRPIX1) * CD1_1, l)
+        arr_len = len(hdu[0].data)
+        self.wave = np.linspace(CRVAL1, CRVAL1 + (arr_len - CRPIX1) * CD1_1, arr_len)
         self.flux = hdu[0].data
 
     def plot(self, axlim='auto', xrange=[3800, 8400]):
