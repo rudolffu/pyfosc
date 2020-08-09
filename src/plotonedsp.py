@@ -55,7 +55,7 @@ teles = settings['mysettings']['telescope']
 Grism = settings['mysettings']['Grism']
 if teles == "XLT":
     print("Settings for XLT will be used.")
-    sfiles = glob.glob('*XL*fits')
+    sfiles = glob.glob('*XL*0001.fits')
     xr = [3800, 9000]
 elif teles == "LJT":
     print("Settings for LJT will be used.")
@@ -65,7 +65,7 @@ elif teles == "LJT":
         xr = [4200, 8600]
     elif Grism == "G14":
         xr = [3100, 7600]
-    sfiles = glob.glob('*LJ*fits')
+    sfiles = glob.glob('*LJ*0001.fits')
 else:
     print("Error detected.")
 
