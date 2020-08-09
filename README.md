@@ -1,5 +1,5 @@
 # PyFOSC
-[![DOI](https://zenodo.org/badge/182419679.svg)](https://zenodo.org/badge/latestdoi/182419679)  
+[![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.3915021.svg)](https://doi.org/10.5281/zenodo.3915021)  
 
 PyFOSC is a pipeline toolbox for long-slit spectroscopy data reduction written in Python. It can be used for FOSC (Faint Object Spectrograph and Camera) data from Xinglong/Lijiang 2-meter telescopes.  
 
@@ -95,11 +95,12 @@ ccdotz.py         # Do zero(bias), overscan correction and trimming.
 makeflat2m.py     # Combine flat fields.
 makereflat2m.py   # Do (illumination) normalization and get perfect flat.
 divideflat2m.py   # Do flat correction.
-removecr2m.py     # Remove cosmic rays in 2d images. Please go to 3. Credits for more information.
+removecr2m.py     # Remove cosmic rays in two-d images. Please go to 3. Credits for more information.
 doapall.py        # Extract spectra.
 reidentlamp2m.py  # Reidentify lamp spectra with previously stored ones.
 #Can use identlamp2m.py instead to identify lamp by oneself.
-wavecal2m.py      # Do wavelength calibration, flux calibration and extract 1d spectra.
+wavecal2m.py      # Do wavelength calibration, flux calibration.
+telluric_base2m.py # Telluric correction and one-d spectra extraction.
 ```
 
 Plot all final 1d spectra with:
@@ -131,18 +132,17 @@ Please see `COPYRIGHT` file and `pyfosc$doc/LICENSES` directory for detailed cop
 
 Yuming Fu. (2020, March 31). PyFOSC: a pipeline toolbox for BFOSC/YFOSC long-slit spectroscopy data reduction (Version v1.0.0). Zenodo. http://doi.org/10.5281/zenodo.3735105
 
-Cite the current version (v1.0.0) with bibtex:  
+Cite the current version (v1.0.1) with bibtex:  
 
 ```
-@software{yuming_fu_2020_3735105,
+@software{yuming_fu_2020_3915021,
   author       = {Yuming Fu},
-  title        = {{PyFOSC: a pipeline toolbox for BFOSC/YFOSC long-
-                   slit spectroscopy data reduction}},
-  month        = mar,
+  title        = {{PyFOSC: a pipeline toolbox for BFOSC/YFOSC long-slit spectroscopy data reduction}},
+  month        = jun,
   year         = 2020,
   publisher    = {Zenodo},
-  version      = {v1.0.0},
-  doi          = {10.5281/zenodo.3735105},
-  url          = {https://doi.org/10.5281/zenodo.3735105}
+  version      = {v1.0.1},
+  doi          = {10.5281/zenodo.3915021},
+  url          = {https://doi.org/10.5281/zenodo.3915021}
 }
 ```
