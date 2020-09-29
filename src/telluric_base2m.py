@@ -26,6 +26,9 @@ stdspec = str(raw_input("Enter filename of the standard star spectrum: "))
 starname = str(raw_input("Enter name of the standard star: "))
 stdspec1 = stdspec.strip('.fits') + '.fits'
 conname = "con"+starname+".fits"
+settings['stdstarname'] = starname
+with open('myfosc.json', 'w') as f:
+    json.dump(settings,f)
 
 iraf.onedspec()
 iraf.onedspec.continuum.unlearn()
@@ -38,6 +41,8 @@ CRPIX1 = hdu[0].header['CRPIX1']
 
 pix1=int((6750-CRVAL1)/CD1_1+CRPIX1-1)
 pix2=int((8300-CRVAL1)/CD1_1+CRPIX1-1)
+if pix2>max(hdu[0].data.shape):
+    pix2 = max(hdu[0].data.shape)
 cpsec = "["+str(pix1)+":"+str(pix2)+"]"
 
 iraf.images.imutil.imcopy.unlearn()
