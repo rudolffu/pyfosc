@@ -15,7 +15,15 @@ def MyFilen(string):
 
 
 def NewUtc(fitsn):
-    timestr = fits.getheader(fitsn)['DATE-OBS']
+    """
+    Added try-except due to changes in fits headers of BFOSC data.
+    """
+    try:
+        timestr1 = fits.getheader(fitsn)['DATE-OBS']
+        timestr2 = fits.getheader(fitsn)['TIME-OBS']
+        timestr = timestr1 + " "+ timestr2 
+    except:
+        timestr = fits.getheader(fitsn)['DATE-OBS']
     return timestr.replace('T', ' ')
 
 
@@ -54,7 +62,7 @@ for img in lamplist:
         iraf.hedit.delete = False
         iraf.hedit.update = True
         iraf.hedit.verify = False
-        iraf.hedit(img, fields='object', value='fear')
+        iraf.hedit(img, fields='OBJECT', value='fear')
     except:
         pass
 
@@ -68,6 +76,7 @@ notbl = otbl.merge(fitslist, on="filen")
 notbl['utctime'] = map(NewUtc, notbl['filen'])
 notbl['st'] = map(NewSt, notbl['utctime'])
 notbl['ut'] = map(UtcHours, notbl['utctime'])
+notbl['utdatetime'] = notbl.utctime.str.replace(' ', 'T')
 
 
 iraf.twodspec()
@@ -98,13 +107,17 @@ for i in range(len(notbl)):
                    fields='object', value=notbl['Obj'][i])
         iraf.hedit(images=notbl['filen'][i], fields='st', value=notbl['st'][i])
         iraf.hedit(images=notbl['filen'][i], fields='ut', value=notbl['ut'][i])
+        iraf.hedit(images=notbl['filen'][i], 
+                   fields='OBSERVATORY', 
+                   value="BAO")
+        iraf.hedit(images=notbl['filen'][i], fields='UTDTIME', value=notbl['utdatetime'][i])
         iraf.longslit.setairmass(images=notbl['filen'][i],
-                                 observatory='bao',
+                                 observatory='BAO',
                                  ra='ra',
                                  dec='dec',
                                  equinox='epoch',
                                  st='st',
                                  ut='ut',
-                                 date='date-obs')
+                                 date='UTDTIME')
     except:
         pass
