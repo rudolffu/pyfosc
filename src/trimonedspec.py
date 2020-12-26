@@ -7,6 +7,7 @@ import sys
 import os
 from pathlib2 import Path 
 import shutil
+import re
 
 with open('myfosc.json') as file:
     settings = json.loads(file.read())
@@ -81,7 +82,7 @@ cpsec = "["+str(pix1)+":"+str(pix2)+"]"
 
 iraf.images.imutil.imcopy.unlearn()
 for telspec in olist:
-    newname = telspec.strip(".fits")+"trim"
+    newname = re.sub('\.fits$', '', telspec) +"trim"
     iraf.images.imutil.imcopy(input=telspec+cpsec, 
                               output=newname)
 
