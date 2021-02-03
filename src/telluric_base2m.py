@@ -35,9 +35,9 @@ iraf.onedspec.continuum.unlearn()
 iraf.onedspec.continuum(input=stdspec1, output=conname)
 
 hdu = fits.open(conname)
-CRVAL1 = hdu[0].header['CRVAL1']
-CD1_1 = hdu[0].header['CD1_1']
-CRPIX1 = hdu[0].header['CRPIX1']
+CRVAL1 = float(hdu[0].header['CRVAL1'])
+CD1_1 = float(hdu[0].header['CD1_1'])
+CRPIX1 = float(hdu[0].header['CRPIX1'])
 
 pix1=int((6750-CRVAL1)/CD1_1+CRPIX1-1)
 pix2=int((8300-CRVAL1)/CD1_1+CRPIX1-1)
