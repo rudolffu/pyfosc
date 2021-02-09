@@ -41,6 +41,7 @@ select opt in "${options[@]}" "Quit"; do
     1 ) printf "============================================================\n"
     TELESCOPE="XLT"
     cp $BASEDIR/iraf_scripts/genlistXLT.cl $CWD
+    cp $BASEDIR/iraf_scripts/genlistXLT2021.cl $CWD
     echo "You picked $opt which is option $REPLY."
     while true; do
     # read -p "Enter the slit you have used (e.g. slit2.5):" slit
