@@ -44,16 +44,16 @@ if teles == "XLT":
 elif teles == "LJT":
     print("Settings for LJT will be used.")
     if Grism == "G3":
-        iraf.ccdred.ccdproc.biassec = '[10:40,2301:4130]'
-        iraf.ccdred.ccdproc.trimsec = '[751:1450,2301:4130]'
+        iraf.ccdred.ccdproc.biassec = '[2100:2148,2301:4130]'
+        iraf.ccdred.ccdproc.trimsec = '[201:1450,2301:4130]'
         # If you want more trimming on the blue side, use:
         # iraf.ccdred.ccdproc.biassec = '[10:40,2491:4130]'
         # iraf.ccdred.ccdproc.trimsec = '[751:1450,2491:4130]'
     elif Grism == "G10":
-        iraf.ccdred.ccdproc.biassec = '[10:40,2591:3340]'
+        iraf.ccdred.ccdproc.biassec = '[2100:2148,2591:3340]'
         iraf.ccdred.ccdproc.trimsec = '[751:1450,2591:3340]'
     elif Grism == "G14":
-        iraf.ccdred.ccdproc.biassec = '[10:40,1901:4200]'
+        iraf.ccdred.ccdproc.biassec = '[2100:2148,1901:4200]'
         iraf.ccdred.ccdproc.trimsec = '[751:1450,1901:4200]'
     iraf.ccdred.ccdproc(images='@flatnall.list', overscan='yes',
                         trim='yes', zerocor='yes', zero='Zero')

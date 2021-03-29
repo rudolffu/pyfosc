@@ -18,8 +18,8 @@ if teles == "XLT":
     readnoise = 4.64
 elif teles == "LJT":
     print("Settings for LJT will be used.")
-    gain = 0.35
-    readnoise = 9.4
+    gain = 3.20
+    readnoise = 13.5
 else:
     print("Error detected.")
 
