@@ -65,7 +65,7 @@ select opt in "${options[@]}" "Quit"; do
     render_template $BASEDIR/config/instrconfig.json.temp > ./myfosc.json
     read -p "Do you want to copy the raw files to ./raw?[y/n]" yn
         case $yn in
-          [Yy]* ) bash $BASEDIR/src/cpfstext.sh; echo "Raw data is backuped and copied to ./raw."; exit;;
+          [Yy]* ) bash $BASEDIR/src/cpljnew.sh; echo "Raw data is backuped and copied to ./raw."; exit;;
           [Nn]* ) echo "Otherwise you have to do it yourself."; exit;;
           * ) echo "Please answer y or n.";;
         esac

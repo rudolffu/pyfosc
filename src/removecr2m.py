@@ -40,9 +40,11 @@ iraf.lacos_im.readn = readnoise
 def rmcrimg(obj):
     iraf.lacos_im(input='f' + obj, output='crf' + obj,
                   outmask='mask' + obj,
+                  niter=4,
                   verbose='No')
     print(obj + ' finished.')
 
 
-pool = mp.Pool(mp.cpu_count())
+# pool = mp.Pool(mp.cpu_count())
+pool = mp.Pool(2)
 pool.map(rmcrimg, objall)
