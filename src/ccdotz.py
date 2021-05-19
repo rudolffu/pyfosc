@@ -5,6 +5,8 @@ import os
 import shutil
 from pyraf import iraf
 import json
+from astropy.io import fits
+from glob import glob
 
 with open('myfosc.json') as file:
     settings = json.loads(file.read())
@@ -43,6 +45,16 @@ if teles == "XLT":
                         trim='yes', zerocor='yes', zero='Zero')
 elif teles == "LJT":
     print("Settings for LJT will be used.")
+    flist = glob("*fits")
+    for f in flist:
+        hdu = fits.open(f,mode='update')
+        hdr = hdu[0].header
+        try:
+            del hdr['CCDSEC']
+        except:
+            pass
+        hdu.flush()
+        hdu.close()
     if Grism == "G3":
         iraf.ccdred.ccdproc.biassec = '[2100:2148,2301:4130]'
         iraf.ccdred.ccdproc.trimsec = '[651:1350,2301:4130]'

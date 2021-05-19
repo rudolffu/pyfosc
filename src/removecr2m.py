@@ -46,5 +46,7 @@ def rmcrimg(obj):
 
 
 # pool = mp.Pool(mp.cpu_count())
-pool = mp.Pool(2)
-pool.map(rmcrimg, objall)
+# pool = mp.Pool(2)
+# pool.map(rmcrimg, objall)
+for obj in objall:
+    rmcrimg(obj)
