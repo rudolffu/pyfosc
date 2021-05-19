@@ -46,7 +46,7 @@ class Spiraf():
         plt.xlabel(r'$\mathrm{Wavelength(\AA})$')
         plt.ylabel(r'$\mathrm{Flux(erg/s/cm^{2}/\AA)}$')
         plt.title('Spectrum of ' + self.name.replace('_', ' '))
-        plt.savefig(self.fname.strip(".fits") + '_spec.pdf', dpi=300)
+        plt.savefig(self.fname.strip(".fits") + '_spec.jpg', dpi=300)
 
 
 with open('myfosc.json') as file:
