@@ -1,4 +1,4 @@
-@software{yuming_fu_2020_3915021,
+@software{fu_2020_pyfosc,
   author       = {Yuming Fu},
   title        = {{PyFOSC: a pipeline toolbox for BFOSC/YFOSC long-slit spectroscopy data reduction}},
   month        = jun,
