@@ -5,6 +5,13 @@ import multiprocessing as mp
 import sys
 import os
 import json
+import shutil
+import platform
+from packaging import version
+if version.parse(platform.python_version()) < version.parse("3.0.0"):
+    print("Using raw_input")
+else:
+    raw_input = input
 
 basepath = os.path.dirname(sys.argv[0])
 lacos_im = os.path.join(basepath, '../iraf_tasks/lacos_im.cl')
@@ -36,6 +43,15 @@ iraf.stsdas()
 iraf.lacos_im.gain = gain
 iraf.lacos_im.readn = readnoise
 
+iraf.images()
+iraf.images.imutil()
+iraf.images.imutil.imheader(images="@objall.list")
+stdspecs = str(raw_input("Enter filenames of all standard star spectra, \n\
+separated by comma (','): "))
+stdlist = [x.strip('.fits') for x in stdspecs.split(',')]
+stdlist = [x.strip() for x in stdlist]
+for item in stdlist:
+    objall.remove(item)
 
 def rmcrimg(obj):
     iraf.lacos_im(input='f' + obj, output='crf' + obj,
@@ -50,3 +66,12 @@ def rmcrimg(obj):
 # pool.map(rmcrimg, objall)
 for obj in objall:
     rmcrimg(obj)
+
+if len(stdlist)>0:
+    for item in stdlist:
+        if teles == "XLT":
+            shutil.copy('f'+item+'.fit', 
+                        'crf'+item+'.fits')
+        elif teles == "LJT":
+            shutil.copy('f'+item+'.fits', 
+                        'crf'+item+'.fits')
