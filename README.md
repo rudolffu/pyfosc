@@ -7,7 +7,13 @@ BFOSC (Beijing-Faint Object Spectrograph and Camera) is an instrument of the 2.1
 
 YFOSC (Yunnan-Faint Object Spectrograph and Camera) is an instrument of the 2.4-m Telescope in Lijiang Observatory, Yunnan Observatories, Chinese Academy of Sciences (YNAO) (IAU code: O44, coordinates: 26°42′33.1″ N, 100°1′51.6″ E). For more information about YFOSC, please see http://wiki.gmg.org.cn/pages/viewpage.action?pageId=557106.
 
-## 1. Installation
+## 1. Installation 
+
+
+```sh
+conda install -c astropy ccdproc photutils
+```
+
 ### 1.1. Dependencies
 ```
 IRAF

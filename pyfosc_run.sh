@@ -7,9 +7,9 @@ python $SRCDIR/ccdotz.py
 python $SRCDIR/makeflat2m.py
 python $SRCDIR/makereflat2m.py
 python $SRCDIR/divideflat2m.py
-python $SRCDIR/removecr2m.py
-python $SRCDIR/doapall.py
-python $SRCDIR/identlamp2m.py
-# python $SRCDIR/reidentlamp2m.py
-python $SRCDIR/wavecal2m.py
-python $SRCDIR/telluric_base2m.py
+# python $SRCDIR/removecr2m.py
+# python $SRCDIR/doapall.py
+# python $SRCDIR/identlamp2m.py
+# # python $SRCDIR/reidentlamp2m.py
+# python $SRCDIR/wavecal2m.py
+# python $SRCDIR/telluric_base2m.py

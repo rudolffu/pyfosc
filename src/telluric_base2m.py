@@ -5,6 +5,12 @@ from astropy.io import fits
 import json
 import sys
 import os
+import platform
+from packaging import version
+if version.parse(platform.python_version()) < version.parse("3.0.0"):
+    print("Using raw_input")
+else:
+    raw_input = input
 
 with open('myfosc.json') as file:
     settings = json.loads(file.read())
