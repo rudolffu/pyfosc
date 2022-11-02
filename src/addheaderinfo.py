@@ -71,6 +71,7 @@ otbl['hmsdms'] = otbl['R.A.'] + otbl['Dec.']
 coord = SkyCoord(otbl['hmsdms'].values, frame='icrs',
                  unit=(u.hourangle, u.deg))
 otbl['rah'] = coord.ra.to(u.hourangle).value
+otbl['radeg'] = coord.ra.to(u.degree).value
 otbl['decdeg'] = coord.dec.to(u.degree).value
 notbl = otbl.merge(fitslist, on="filen")
 notbl['utctime'] = map(NewUtc, notbl['filen'])
@@ -100,10 +101,6 @@ for i in range(len(notbl)):
         iraf.hedit.update = True
         iraf.hedit.verify = False
         iraf.hedit(images=notbl['filen'][i],
-                   fields='ra', value=notbl['rah'][i])
-        iraf.hedit(images=notbl['filen'][i],
-                   fields='dec', value=notbl['decdeg'][i])
-        iraf.hedit(images=notbl['filen'][i],
                    fields='object', value=notbl['Obj'][i])
         iraf.hedit(images=notbl['filen'][i], fields='st', value=notbl['st'][i])
         iraf.hedit(images=notbl['filen'][i], fields='ut', value=notbl['ut'][i])
@@ -119,5 +116,9 @@ for i in range(len(notbl)):
                                  st='st',
                                  ut='ut',
                                  date='UTDTIME')
+        iraf.hedit(images=notbl['filen'][i],
+                   fields='ra', value=notbl['radeg'][i])
+        iraf.hedit(images=notbl['filen'][i],
+                   fields='dec', value=notbl['decdeg'][i])
     except:
         pass
