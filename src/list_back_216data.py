@@ -86,10 +86,15 @@ if __name__ == '__main__':
 
 df.to_csv('imglist.csv', index=False)
 
+try:
+    list_std = glob.glob('speclfluxref*.fit')
+except:
+    list_std = []
 list_bias = glob.glob('bias*.fit')
 list_obj = glob.glob('specltar*.fit')
 list_flat = glob.glob('speclflat*.fit')
 list_lamp = glob.glob('specllamp*.fit')
+list_obj.extend(list_std)
 list_flatnall = list_flat.copy()
 list_flatnall.extend(list_lamp)
 list_flatnall.extend(list_obj)
