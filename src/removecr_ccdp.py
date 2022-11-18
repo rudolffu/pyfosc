@@ -42,7 +42,6 @@ files = ccdp.ImageFileCollection('./', keywords=keys,filenames=objall)
 co_targets = files.filter()
 
 # Process standard star and targets separately
-# Threshold should be able to be edited?
 idx1 = (co_targets.summary['exptime'] > 500)
 tbex = co_targets.summary[co_targets.summary['exptime'] < 900]
 
@@ -55,7 +54,7 @@ for i, pathname in enumerate(tbex['file']):
     print('Copying {} to {}'.format(pathname, newpname))
     shutil.copy(pathname, newpname)
 
-# Masking
+# CCD mask
 flat1 = CCDData.read('./perFlat.fits', unit='adu')
 fmask = ccdp.ccdmask(flat1)
 
