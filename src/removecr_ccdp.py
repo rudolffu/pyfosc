@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 import os
-from astropy.nddata import fits_ccddata_reader,CCDData
+from astropy.nddata import CCDData
 import ccdproc as ccdp
 from astropy import units as u
 from packaging import version
@@ -66,7 +66,5 @@ for file_path in tb1['file'].tolist():
     ccd = ccdp.gain_correct(ccd, gain * u.electron / u.adu)
     ccd.mask = fmask
     new_ccd = ccdp.cosmicray_lacosmic(ccd, readnoise=readnoise, sigclip=7, verbose=True)
-    cr_mask = new_ccd.mask
-    cr_mask[ccd.mask] = False
     new_ccd.mask = None
     new_ccd.write('cr'+file_name, overwrite=True)
