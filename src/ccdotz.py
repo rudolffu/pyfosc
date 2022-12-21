@@ -61,6 +61,9 @@ elif teles == "LJT":
         # If you want more trimming on the blue side, use:
         # iraf.ccdred.ccdproc.biassec = '[10:40,2491:4130]'
         # iraf.ccdred.ccdproc.trimsec = '[751:1450,2491:4130]'
+    elif Grism == "G8":
+        iraf.ccdred.ccdproc.biassec = '[2100:2148,1136:4250]'
+        iraf.ccdred.ccdproc.trimsec = '[751:1450,1136:4250]'
     elif Grism == "G10":
         iraf.ccdred.ccdproc.biassec = '[2100:2148,2591:3340]'
         iraf.ccdred.ccdproc.trimsec = '[751:1450,2591:3340]'
