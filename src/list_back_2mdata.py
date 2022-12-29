@@ -18,12 +18,14 @@ import json
 with open('myfosc.json') as file:
     settings = json.loads(file.read())
 teles = settings['mysettings']['telescope']
+Grism = settings['mysettings']['Grism']
+slit = settings['mysettings']['slit']
 if teles == "XLT":
     print("Settings for XLT will be used.")
-    # midname = 'XL'
 elif teles == "LJT":
     print("Settings for LJT will be used.")
-    # midname = 'LJ'
+elif teles == "HCT":
+    print("Settings for HCT will be used.")
 else:
     print("Error detected.")
 
@@ -33,19 +35,25 @@ def headertable(filename, telescope=None):
     hdr = fits.getheader(filename)
     arr = np.asarray(hdr.cards).T
     tab = Table(data=arr[1], names=arr[0])
-    tab.add_column(basename, name='filename')
     if telescope=='XLT':
+        tab.add_column(basename, name='FILENAME')
         fields = ['OBJECT','RA','DEC','IMAGETYP',
                   'DATE-OBS','EXPTIME','OBSTYPE',
-                  'FILTER','filename','TELESCOP',
+                  'FILTER','FILENAME','TELESCOP',
                   'INSTRUME','JD','AIRMASS','OBSERVAT']
     elif telescope=='LJT':
+        tab.add_column(basename, name='FILENAME')
         fields = ['OBJECT','CAT-RA','CAT-DEC',
                   'FILTER1','FILTER3',
                   'DATE-OBS','EXPTIME','OBSTYPE',
-                  'FILTER','filename','TELESCOP',
+                  'FILTER','FILENAME','TELESCOP',
                   'INSTRUME','MJD-OBS','AIRMASS',
                   'SITE','GAIN','RDNOISE']
+    elif telescope=='HCT':
+        fields = ['OBJECT','RA','DEC','IMAGETYP',
+                  'DATE-OBS','EXPTIME','GRISM',
+                  'FILTER','FILENAME','TELESCOP',
+                  'INSTRUME','OBSERVAT']
     return tab[fields]
 
 
@@ -55,15 +63,22 @@ def get_file_ext(filename):
 
 def rename_raw(df, telescope=None):
     if telescope=='XLT':
-        num = df.filename.str[8:12]
+        num = df.FILENAME.str[8:12]
+        ext = df.FILENAME.apply(get_file_ext)
     elif telescope=='LJT':
-        num = df.filename.str[23:27]
+        num = df.FILENAME.str[23:27]
+        ext = df.FILENAME.apply(get_file_ext)
+    elif telescope=='HCT':
+        num = df.FILENAME.str[3:8]
+        ext = '.fits'
     df.OBJECT = df.OBJECT.str.replace('N/A','NULL')
     df.OBJECT = df.OBJECT.str.replace(' ','')
     objname = '_' + df.OBJECT.str[:10]
     objname = objname.str.replace('_NULL', '')
-    obstype = df.OBSTYPE.str.lower()
-    ext = df.filename.apply(get_file_ext)
+    if telescope=='HCT':
+        obstype = df.IMAGETYP.str.lower()
+    else:
+        obstype = df.OBSTYPE.str.lower()
     newname = obstype + num + objname + ext
     return newname
 
@@ -77,6 +92,7 @@ def mod_header(filename, field, value):
     with fits.open(filename, 'update') as f:
         for hdu in f:
             hdu.header[field] = value
+            hdu.flush()
 
 if teles=='XLT':
     gain = 2.2                                                        
@@ -92,19 +108,37 @@ elif teles=='LJT':
     tablist = []
     for item in flist:
         tablist.append(headertable(item, teles))
-
+elif teles=='HCT':
+    print("Now printing files in the current directory......")
+    print(os.listdir('./'))
+    filename_prefix = str(input("Enter prefix of the HCT spectra, e.g.'af': "))
+    flist = glob.glob(filename_prefix+'*')
+    tablist = []
+    for item in flist:
+        with fits.open(item, mode='update') as hdu:
+            hdu[0].verify('fix')
+            hdu.flush()
+        tablist.append(headertable(item, teles))
 tb = vstack(tablist)
 tb.sort(['DATE-OBS'])
 df = tb.to_pandas()
 # df.query('OBSTYPE=="BIAS"')
 
 
+grisms_ljt = {'G3': 'grism3', 
+              'G8': 'grism8', 
+              'G10': 'grism10', 
+              'G14': 'grism14'} 
+slits_ljt = {'slit1.8': 'lslit1_81', 
+             'slit2.5': 'lslit2_51', 
+             'slit5.0': 'lslit5_05'} 
 if teles=='LJT':
-    tb = tb[tb['FILTER3']!='grism14']
-    tb = tb[tb['FILTER3']!='grism8']
-    tb = tb[tb['FILTER3']!='grism10']
-    tb = tb[tb['FILTER1']!='lslit5_05']
-    tb = tb[tb['FILTER1']!='lslit1_81']
+    key_grism = grisms_ljt.pop(Grism)
+    key_slit = slits_ljt.pop(slit)
+    for grism_item in list(grisms_ljt.values()):
+        tb = tb[tb['FILTER3']!=grism_item]
+    for slit_item in list(slits_ljt.values()):
+        tb = tb[tb['FILTER1']!=slit_item]
     df = tb.to_pandas()
     df.loc[df.FILTER.str.contains('lamp_neon_helium'),'OBSTYPE'] = 'CAL'
     df.OBSTYPE = df.OBSTYPE.str.replace('EXPERIMENTAL', 'EXPOSE')
@@ -114,7 +148,7 @@ if teles=='LJT':
     df.loc[df.FILTER.str.contains('lamp_halogen'), 'OBSTYPE'] = 'LAMPFLAT'
 
 
-imglist = df.filename
+imglist = df.FILENAME
 newname = rename_raw(df, teles)
 df['newname'] = newname
 raw_dir = './raw'
@@ -151,6 +185,16 @@ elif teles=='LJT':
     list_obj = glob.glob('sci*.fits')
     list_flat = glob.glob('lampflat*.fits')
     list_lamp = glob.glob('cal*.fits')
+    list_flatnall = list_flat.copy()
+    list_flatnall.extend(list_lamp)
+    list_flatnall.extend(list_obj)
+    list_specall = list_obj.copy()
+    list_specall.extend(list_lamp)
+elif teles=='HCT':
+    list_bias = glob.glob('bias*.fits')
+    list_obj = glob.glob('object*.fits')
+    list_flat = glob.glob('flat*.fits')
+    list_lamp = glob.glob('lamp*.fits')
     list_flatnall = list_flat.copy()
     list_flatnall.extend(list_lamp)
     list_flatnall.extend(list_obj)
