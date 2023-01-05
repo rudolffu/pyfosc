@@ -18,6 +18,9 @@ if teles == "XLT":
 elif teles == "LJT":
     print("Settings for LJT will be used.")
     disp_axis = 2
+elif teles == "HCT":
+    print("Settings for HCT will be used.")
+    disp_axis = 2
 else:
     disp_axis = str(raw_input("Dispersion axis: 1 for line; 2 for column."))
 

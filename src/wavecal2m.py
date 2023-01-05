@@ -25,6 +25,10 @@ elif teles == "LJT":
     print("Settings for LJT will be used.")
     extinct = os.path.join(basepath, '../extinction/LJextinct.dat')
     midname = 'LJ'
+elif teles == "HCT":
+    print("Settings for HCT will be used.")
+    extinct = os.path.join(basepath, '../extinction/LJextinct.dat')
+    midname = 'HCT'
 else:
     print("Error detected.")
 

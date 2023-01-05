@@ -29,6 +29,11 @@ elif teles == "LJT":
     lamplist = [os.path.basename(x) for x in glob.glob(
         dbpath + '/lamp_LJ*fits')]
     linelists = 'linelists$henear.dat'
+elif teles == "HCT":
+    print("Settings for HCT will be used.")
+    lamplist = [os.path.basename(x) for x in glob.glob(
+        dbpath + '/lamp_HCT*fits')]
+    linelists = 'linelists$fear.dat'
 else:
     print("Error detected.")
 

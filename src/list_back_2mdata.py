@@ -6,13 +6,16 @@ from astropy.table import vstack,Table
 import pandas as pd
 import numpy as np
 import astropy.units as u
-from astropy.coordinates import SkyCoord
+from astropy.coordinates import SkyCoord, Angle, EarthLocation, AltAz
 import glob
 import os
 from pathlib import Path
 import shutil
 import multiprocess as mp
 import json
+import datetime
+from astropy.time import Time
+import warnings
 
 
 with open('myfosc.json') as file:
@@ -84,6 +87,8 @@ def rename_raw(df, telescope=None):
 
 
 def backup_raw(img, newname):
+    raw_dir = './raw'
+    Path(raw_dir).mkdir(exist_ok=True)
     shutil.copy(img, newname)
     shutil.move(img, raw_dir + '/' + img)
 
@@ -93,6 +98,132 @@ def mod_header(filename, field, value):
         for hdu in f:
             hdu.header[field] = value
             hdu.flush()
+
+def date2isostr_HCT(filename):
+    """
+    Convert date and time stamps to UTC datetime string in ISO format (YYYY-MM-DDTHH:MM:SS).
+    Parameter:
+        filename : path-like or file-like 
+            FITS file to get header from. 
+    Returns:
+        isostr : str
+            UTC datetime string in ISO format.
+    """
+    hdr = fits.getheader(filename)
+    date = hdr['DATE-OBS']
+    if 'T' in hdr['DATE-OBS']:
+        warnings.warn('Field DATE-OBS already contains date and time in ISO format. \
+The value of DATE-OBS is unchanged.')
+        isostr = date
+    else:
+        hms_str = hdr.comments['TM_START'].split(' ')[0]
+        hms_str =  hms_str.replace('/', ':')
+        isostr = "{}T{}".format(date, hms_str)
+    # tnew = datetime.datetime.fromisoformat(isostr)
+    # tnew = Time(tnew) 
+    return isostr
+
+
+def isostr2sidereal(isostr, location):
+    """
+    Convert UTC datetime string in ISO format to sidereal time in a given location.
+    Parameter:
+        isostr : str
+            UTC datetime string in ISO format.
+        location : `~astropy.coordinates.EarthLocation` 
+            Location on the Earth.
+    Returns:
+        sdrtime : float64 
+            Value of the sidereal time.
+    """    
+    utcTime = Time(isostr, scale='utc', location=location)
+    sdrtime = utcTime.sidereal_time('apparent').value
+    return sdrtime
+
+
+def isostr2UTChours(isostr, location):
+    utcTime = Time(isostr, scale='utc', location=location)
+    hangle = Angle(utcTime.isot.split('T')[1] + 'hours')
+    utchours = hangle.hour
+    return utchours
+
+def getairmass(ra, dec, obstime, location):
+    try:
+        ra = float(ra)
+        dec = float(dec)
+        coord = SkyCoord(ra=ra*u.deg, dec=dec*u.deg,
+                         frame='icrs')
+    except:
+        ra_str = ra
+        dec_str = dec
+        coord = SkyCoord('{} {}'.format(ra_str, dec_str),
+                         unit=(u.hourangle, u.deg),
+                         frame='icrs')
+    co_altaz = coord.transform_to(AltAz(obstime=obstime,location=location))
+    return co_altaz.secz.value
+
+
+class HCTfits():
+    def __init__(self, filename, site='IAO', fix=True) -> None:
+        self.filename = filename
+        self.location = EarthLocation.of_site(site)
+        if fix==True:
+            hdu = fits.open(filename, mode='update')
+            hdu[0].verify('fix')
+            hdu.flush()
+            hdu.close()
+        hdr = fits.getheader(self.filename)
+        if ':' in hdr['RA'] and ':' in hdr['DEC']:
+            coord = SkyCoord('{} {}'.format(hdr['RA'], hdr['DEC']),
+                    unit=(u.hourangle, u.deg), frame='icrs')
+        else:
+            ra = float(hdr['RA'])
+            dec = float(hdr['DEC'])
+            coord = SkyCoord(ra=ra*u.deg, dec=dec*u.deg, frame='icrs')
+        self.coord = coord
+        self.ra = coord.ra.value
+        self.dec = coord.dec.value
+        self.hdr = hdr
+
+    def fixhdu(self):
+        filename = self.filename
+        hdu = fits.open(filename, mode='update')
+        hdu[0].verify('fix')
+        hdu.flush()
+        hdu.close()
+    
+    def update_field(self, field, value):
+        filename = self.filename
+        hdu = fits.open(filename, mode='update')
+        hdu[0].header[field] = value
+        hdu.flush()
+        hdu.close()
+
+    def update_dateobs(self):
+        hdr = self.hdr
+        date = hdr['DATE-OBS']
+        if 'T' in hdr['DATE-OBS']:
+            warnings.warn('Field DATE-OBS already contains date and time in ISO format. \
+The value of DATE-OBS is unchanged.')
+            isostr = date
+        else:
+            hms_str = hdr.comments['TM_START'].split(' ')[0]
+            hms_str =  hms_str.replace('/', ':')
+            isostr = "{}T{}".format(date, hms_str)
+        self.update_field('DATE-OBS', isostr)
+        exptime = hdr['EXPTIME']
+        t_delta = datetime.timedelta(seconds=exptime/2)
+        datemid = datetime.datetime.fromisoformat(isostr) + t_delta
+        datemid = Time(datemid, location=self.location)
+        self.datemid = datemid
+        self.update_field('UTC-MID', datemid.isot)
+
+    def update_airmass(self):
+        co_altaz = self.coord.transform_to(AltAz(obstime=self.datemid,location=self.location))
+        self.co_altaz = co_altaz
+        self.airmass = co_altaz.secz.value
+        self.update_field('AIRMASS', self.airmass)
+    
 
 if teles=='XLT':
     gain = 2.2                                                        
@@ -109,15 +240,19 @@ elif teles=='LJT':
     for item in flist:
         tablist.append(headertable(item, teles))
 elif teles=='HCT':
+    gain = 1.22                                                        
+    ron = 4.8
     print("Now printing files in the current directory......")
     print(os.listdir('./'))
     filename_prefix = str(input("Enter prefix of the HCT spectra, e.g.'af': "))
     flist = glob.glob(filename_prefix+'*')
     tablist = []
     for item in flist:
-        with fits.open(item, mode='update') as hdu:
-            hdu[0].verify('fix')
-            hdu.flush()
+        hf = HCTfits(item)
+        hf.update_field('gain', gain)
+        hf.update_field('rdnoise', ron)
+        hf.update_dateobs()
+        hf.update_airmass()
         tablist.append(headertable(item, teles))
 tb = vstack(tablist)
 tb.sort(['DATE-OBS'])
@@ -151,8 +286,6 @@ if teles=='LJT':
 imglist = df.FILENAME
 newname = rename_raw(df, teles)
 df['newname'] = newname
-raw_dir = './raw'
-Path(raw_dir).mkdir(exist_ok=True)
 
 df.to_csv('imglist.csv', index=False)
 

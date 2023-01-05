@@ -21,6 +21,9 @@ if teles == "XLT":
 elif teles == "LJT":
     print("Settings for LJT will be used.")
     midname = 'LJ'
+elif teles == "HCT":
+    print("Settings for HCT will be used.")
+    midname = 'HCT'
 else:
     print("Error detected.")
 

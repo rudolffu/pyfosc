@@ -1,7 +1,6 @@
 #!/usr/bin/env bash
 BASEDIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" >/dev/null 2>&1 && pwd )"
 SRCDIR=$BASEDIR/src
-# python $SRCDIR/addheaderinfo.py
 python $SRCDIR/makezero2m.py
 python $SRCDIR/ccdotz.py
 python $SRCDIR/makeflat2m.py
