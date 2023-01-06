@@ -173,16 +173,21 @@ class HCTfits():
             hdu.flush()
             hdu.close()
         hdr = fits.getheader(self.filename)
-        if ':' in hdr['RA'] and ':' in hdr['DEC']:
-            coord = SkyCoord('{} {}'.format(hdr['RA'], hdr['DEC']),
-                    unit=(u.hourangle, u.deg), frame='icrs')
-        else:
-            ra = float(hdr['RA'])
-            dec = float(hdr['DEC'])
-            coord = SkyCoord(ra=ra*u.deg, dec=dec*u.deg, frame='icrs')
-        self.coord = coord
-        self.ra = coord.ra.value
-        self.dec = coord.dec.value
+        try:
+            if ':' in hdr['RA'] and ':' in hdr['DEC']:
+                coord = SkyCoord('{} {}'.format(hdr['RA'], hdr['DEC']),
+                                 unit=(u.hourangle, u.deg), frame='icrs')
+            else:
+                ra = float(hdr['RA'])
+                dec = float(hdr['DEC'])
+                coord = SkyCoord(ra=ra*u.deg, dec=dec*u.deg, frame='icrs')
+            self.coord = coord
+            self.ra = coord.ra.value
+            self.dec = coord.dec.value
+        except:
+            self.coord = None
+            self.ra = None
+            self.dec = None
         self.hdr = hdr
 
     def fixhdu(self):
@@ -251,8 +256,14 @@ elif teles=='HCT':
         hf = HCTfits(item)
         hf.update_field('gain', gain)
         hf.update_field('rdnoise', ron)
-        hf.update_dateobs()
-        hf.update_airmass()
+        if hf.coord is not None:
+            hf.update_dateobs()
+            hf.update_airmass()
+        else:
+            hf.update_field('RA', 0.0)
+            hf.update_field('DEC', 0.0)
+        if 'IMAGETYP' not in hf.hdr.keys():
+            hf.update_field('IMAGETYP', 'undefined')
         tablist.append(headertable(item, teles))
 tb = vstack(tablist)
 tb.sort(['DATE-OBS'])
