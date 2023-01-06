@@ -1,6 +1,8 @@
 # PyFOSC
 [![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.3915021.svg)](https://doi.org/10.5281/zenodo.3915021)  
 
+__Please note: This program is under active development. The documentation may be inconsistent with the latest codes.__
+
 PyFOSC is a pipeline toolbox for long-slit spectroscopy data reduction written in Python. It can be used for FOSC (Faint Object Spectrograph and Camera) data from Xinglong/Lijiang 2-meter telescopes.  
 
 BFOSC (Beijing-Faint Object Spectrograph and Camera) is an instrument of the 2.16-m Telescope in Xinglong Observatory, National Astronomical Observatories, Chinese Academy of Sciences (NAOC) (IAU code: 327, coordinates: 40°23′39″ N, 117°34′30″ E). For more information about BFOSC, please see http://www.xinglong-naoc.org/html/en/gcyq/216/detail-18.html.
