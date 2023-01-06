@@ -86,7 +86,7 @@ select opt in "${options[@]}" "Quit"; do
         esac
     done
     break;;
-    3 ) printf "============================================================\n"
+    4 ) printf "============================================================\n"
     echo "You picked $opt which is option $REPLY.";;
 
     $(( ${#options[@]}+1 )) ) echo "Goodbye!"; break;;

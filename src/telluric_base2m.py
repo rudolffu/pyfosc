@@ -68,17 +68,17 @@ for obj in olist3:
                            cal="cal"+conname,
                            answer="YES")
 
-print('Copy to onedspec...')
-olist4 = glob.glob('*_*tel*fits')
-print(olist4)
+# print('Copy to onedspec...')
+# olist4 = glob.glob('*_*tel*fits')
+# print(olist4)
 
-iraf.twodspec()
-iraf.twodspec.longslit()
-iraf.twodspec.longslit.scopy.unlearn()
-for obj in olist4:
-    objind = str(olist4.index(obj) + 1)
-    objname = fits.getheader(obj)['OBJECT'] + \
-        '_' + midname + objind + '_' + starname
-    iraf.twodspec.longslit.scopy(input=obj, output=objname, bands=1,
-                                 format='onedspec')
+# iraf.twodspec()
+# iraf.twodspec.longslit()
+# iraf.twodspec.longslit.scopy.unlearn()
+# for obj in olist4:
+#     objind = str(olist4.index(obj) + 1)
+#     objname = fits.getheader(obj)['OBJECT'] + \
+#         '_' + midname + objind + '_' + starname
+#     iraf.twodspec.longslit.scopy(input=obj, output=objname, bands=1,
+#                                  format='onedspec')
 print('---DONE---')
