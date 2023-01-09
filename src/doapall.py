@@ -2,6 +2,12 @@
 import glob
 from pyraf import iraf
 import json
+import platform
+from packaging import version
+if version.parse(platform.python_version()) < version.parse("3.0.0"):
+    print("Using raw_input")
+else:
+    raw_input = input
 
 with open('myfosc.json') as file:
     settings = json.loads(file.read())
@@ -11,6 +17,9 @@ if teles == "XLT":
     disp_axis = 1
 elif teles == "LJT":
     print("Settings for LJT will be used.")
+    disp_axis = 2
+elif teles == "HCT":
+    print("Settings for HCT will be used.")
     disp_axis = 2
 else:
     disp_axis = str(raw_input("Dispersion axis: 1 for line; 2 for column."))

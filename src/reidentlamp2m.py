@@ -6,6 +6,12 @@ import json
 import os
 import sys
 from shutil import copy2
+import platform
+from packaging import version
+if version.parse(platform.python_version()) < version.parse("3.0.0"):
+    print("Using raw_input")
+else:
+    raw_input = input
 
 CWD = os.getcwd()
 dbpath = os.path.join(os.path.dirname(sys.argv[0]), '../database')
@@ -23,6 +29,11 @@ elif teles == "LJT":
     lamplist = [os.path.basename(x) for x in glob.glob(
         dbpath + '/lamp_LJ*fits')]
     linelists = 'linelists$henear.dat'
+elif teles == "HCT":
+    print("Settings for HCT will be used.")
+    lamplist = [os.path.basename(x) for x in glob.glob(
+        dbpath + '/lamp_HCT*fits')]
+    linelists = 'linelists$fear.dat'
 else:
     print("Error detected.")
 

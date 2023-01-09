@@ -61,6 +61,9 @@ elif teles == "LJT":
         # If you want more trimming on the blue side, use:
         # iraf.ccdred.ccdproc.biassec = '[10:40,2491:4130]'
         # iraf.ccdred.ccdproc.trimsec = '[751:1450,2491:4130]'
+    elif Grism == "G8":
+        iraf.ccdred.ccdproc.biassec = '[2100:2148,1136:4250]'
+        iraf.ccdred.ccdproc.trimsec = '[751:1450,1136:4250]'
     elif Grism == "G10":
         iraf.ccdred.ccdproc.biassec = '[2100:2148,2591:3340]'
         iraf.ccdred.ccdproc.trimsec = '[751:1450,2591:3340]'
@@ -68,6 +71,10 @@ elif teles == "LJT":
         iraf.ccdred.ccdproc.biassec = '[2100:2148,1901:4200]'
         iraf.ccdred.ccdproc.trimsec = '[751:1450,1901:4200]'
     iraf.ccdred.ccdproc(images='@flatnall.list', overscan='yes',
+                        trim='yes', zerocor='yes', zero='Zero')
+elif teles == "HCT":
+    iraf.ccdred.ccdproc.trimsec = '[26:250,101:2800]'
+    iraf.ccdred.ccdproc(images='@flatnall.list', overscan='no',
                         trim='yes', zerocor='yes', zero='Zero')
 else:
     print("Error detected.")

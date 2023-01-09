@@ -5,6 +5,12 @@ from astropy.io import fits
 import json
 import sys
 import os
+import platform
+from packaging import version
+if version.parse(platform.python_version()) < version.parse("3.0.0"):
+    print("Using raw_input")
+else:
+    raw_input = input
 
 with open('myfosc.json') as file:
     settings = json.loads(file.read())
@@ -15,6 +21,9 @@ if teles == "XLT":
 elif teles == "LJT":
     print("Settings for LJT will be used.")
     midname = 'LJ'
+elif teles == "HCT":
+    print("Settings for HCT will be used.")
+    midname = 'HCT'
 else:
     print("Error detected.")
 
@@ -40,7 +49,7 @@ CD1_1 = float(hdu[0].header['CD1_1'])
 CRPIX1 = float(hdu[0].header['CRPIX1'])
 
 pix1=int((6750-CRVAL1)/CD1_1+CRPIX1-1)
-pix2=int((8300-CRVAL1)/CD1_1+CRPIX1-1)
+pix2=int((9800-CRVAL1)/CD1_1+CRPIX1-1)
 if pix2>max(hdu[0].data.shape):
     pix2 = max(hdu[0].data.shape)
 cpsec = "["+str(pix1)+":"+str(pix2)+"]"
@@ -59,17 +68,17 @@ for obj in olist3:
                            cal="cal"+conname,
                            answer="YES")
 
-print('Copy to onedspec...')
-olist4 = glob.glob('*_*tel*fits')
-print(olist4)
+# print('Copy to onedspec...')
+# olist4 = glob.glob('*_*tel*fits')
+# print(olist4)
 
-iraf.twodspec()
-iraf.twodspec.longslit()
-iraf.twodspec.longslit.scopy.unlearn()
-for obj in olist4:
-    objind = str(olist4.index(obj) + 1)
-    objname = fits.getheader(obj)['OBJECT'] + \
-        '_' + midname + objind + '_' + starname
-    iraf.twodspec.longslit.scopy(input=obj, output=objname, bands=1,
-                                 format='onedspec')
+# iraf.twodspec()
+# iraf.twodspec.longslit()
+# iraf.twodspec.longslit.scopy.unlearn()
+# for obj in olist4:
+#     objind = str(olist4.index(obj) + 1)
+#     objname = fits.getheader(obj)['OBJECT'] + \
+#         '_' + midname + objind + '_' + starname
+#     iraf.twodspec.longslit.scopy(input=obj, output=objname, bands=1,
+#                                  format='onedspec')
 print('---DONE---')

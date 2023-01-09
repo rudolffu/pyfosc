@@ -30,7 +30,7 @@ fi
 printf "============================================================\n"
 title="Please select the instrument with which you took the spectra."
 prompt="Enter number after the prompt:"
-options=("BFOSC, Xinglong 2m16 telescope" "YFOSC, Lijiang 2m4 telescope")
+options=("BFOSC, Xinglong 2m16 telescope" "YFOSC, Lijiang 2m4 telescope" "HFOSC, HCT at IAO")
 
 echo "$title"
 PS3="$prompt "
@@ -40,8 +40,6 @@ select opt in "${options[@]}" "Quit"; do
 
     1 ) printf "============================================================\n"
     TELESCOPE="XLT"
-    cp $BASEDIR/iraf_scripts/genlistXLT.cl $CWD
-    cp $BASEDIR/iraf_scripts/genlistXLT2021.cl $CWD
     echo "You picked $opt which is option $REPLY."
     while true; do
     # read -p "Enter the slit you have used (e.g. slit2.5):" slit
@@ -49,7 +47,7 @@ select opt in "${options[@]}" "Quit"; do
     render_template $BASEDIR/config/instrconfig.json.temp > ./myfosc.json
     read -p "Do you want to copy the raw files to ./raw?[y/n]" yn
         case $yn in
-          [Yy]* ) bash $BASEDIR/src/cpxlraw.sh; echo "Raw data is backuped and copied to ./raw."; exit;;
+          [Yy]* ) python $BASEDIR/src/list_back_2mdata.py; echo "Raw data is backuped and copied to ./raw."; exit;;
           [Nn]* ) echo "Otherwise you have to do it yourself."; exit;;
           * ) echo "Please answer y or n.";;
         esac
@@ -57,7 +55,6 @@ select opt in "${options[@]}" "Quit"; do
     break;;
     2 ) printf "============================================================\n"
     TELESCOPE="LJT"
-    cp $BASEDIR/iraf_scripts/genlistLJT.cl $CWD
     echo "You picked $opt which is option $REPLY."
     while true; do
     read -p "Enter the slit you have used (e.g. slit2.5):" slit
@@ -65,13 +62,28 @@ select opt in "${options[@]}" "Quit"; do
     render_template $BASEDIR/config/instrconfig.json.temp > ./myfosc.json
     read -p "Do you want to copy the raw files to ./raw?[y/n]" yn
         case $yn in
-          [Yy]* ) bash $BASEDIR/src/cpljnew.sh; echo "Raw data is backuped and copied to ./raw."; exit;;
+          [Yy]* ) python $BASEDIR/src/list_back_2mdata.py; echo "Raw data is backuped and copied to ./raw."; exit;;
           [Nn]* ) echo "Otherwise you have to do it yourself."; exit;;
           * ) echo "Please answer y or n.";;
         esac
     done
     break;;
     3 ) printf "============================================================\n"
+    TELESCOPE="HCT"
+    echo "You picked $opt which is option $REPLY."
+    while true; do
+    read -p "Enter the slit you have used (e.g. s134; s167):" slit
+    read -p "Enter the Grism you have used (e.g. Gr7):" Grism
+    render_template $BASEDIR/config/instrconfig.json.temp > ./myfosc.json
+    read -p "Do you want to copy the raw files to ./raw?[y/n]" yn
+        case $yn in
+          [Yy]* ) python $BASEDIR/src/list_back_2mdata.py; echo "Raw data is backuped and copied to ./raw."; exit;;
+          [Nn]* ) echo "Otherwise you have to do it yourself."; exit;;
+          * ) echo "Please answer y or n.";;
+        esac
+    done
+    break;;
+    4 ) printf "============================================================\n"
     echo "You picked $opt which is option $REPLY.";;
 
     $(( ${#options[@]}+1 )) ) echo "Goodbye!"; break;;

@@ -5,6 +5,12 @@ from astropy.io import fits
 import json
 import sys
 import os
+import platform
+from packaging import version
+if version.parse(platform.python_version()) < version.parse("3.0.0"):
+    print("Using raw_input")
+else:
+    raw_input = input
 
 basepath = os.path.dirname(sys.argv[0])
 myonedstds = os.path.join(basepath, '../iraf_data/onedstds')
@@ -19,6 +25,10 @@ elif teles == "LJT":
     print("Settings for LJT will be used.")
     extinct = os.path.join(basepath, '../extinction/LJextinct.dat')
     midname = 'LJ'
+elif teles == "HCT":
+    print("Settings for HCT will be used.")
+    extinct = os.path.join(basepath, '../extinction/LJextinct.dat')
+    midname = 'HCT'
 else:
     print("Error detected.")
 
