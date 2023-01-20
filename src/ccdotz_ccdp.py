@@ -14,6 +14,7 @@ Grism = settings['mysettings']['Grism']
 
 if teles == "XLT":
     print("Settings for XLT will be used.")
+    zero = CCDData.read('./Zero.fit', unit='adu')
     overscan = False
     if Grism == "G4":
         trimsec = '[51:1750,681:1350]'
@@ -22,6 +23,7 @@ if teles == "XLT":
 
 elif teles == "LJT":
     print("Settings for LJT will be used.")
+    zero = CCDData.read('./Zero.fits', unit='adu')
     overscan = True
     flist = glob("*fits")
     for f in flist:
@@ -51,6 +53,7 @@ elif teles == "LJT":
 
 elif teles == "HCT":
     print("Settings for HCT will be used.")
+    zero = CCDData.read('./Zero.fits', unit='adu')
     overscan = False
     trimsec = '[26:250,101:2800]'
 
@@ -66,7 +69,6 @@ with open('flatnall.list') as file:
 flatnalls = ImageFileCollection('./',filenames=flatnall_list)
 tb_flatnalls = flatnalls.summary
 
-zero = CCDData.read('./Zero.fit', unit='adu')
 for file_name in tb_flatnalls['file'].tolist():
     ccd = CCDData.read(file_name, unit='adu')
     if overscan:
