@@ -97,7 +97,7 @@ def mod_header(filename, field, value):
     with fits.open(filename, 'update') as f:
         for hdu in f:
             hdu.header[field] = value
-            hdu.flush()
+        f.flush()
 
 def date2isostr_HCT(filename):
     """
