@@ -16,17 +16,12 @@ with open('flat.list') as file:
         flat_list.append(line)
 
 flats = ImageFileCollection('./',filenames=flat_list)
-tab = flats.summary['file','exptime']
-exptimes=set(tab['exptime'].tolist())
-for exp in exptimes:
-    file_list = tab[tab['exptime']==exp]['file'].tolist()
-    files = ImageFileCollection('./',filenames=file_list)
-    c = Combiner(flats.ccds(ccd_kwargs={'unit':u.adu}))
-    c.sigma_clipping() #dev_func
-    avg_combined = c.average_combine()
-    if teles == "XLT" :
-        avg_combined.write('Flat_{}.fit'.format(str(exp)), overwrite=True)
-    elif teles in ("LJT","HCT") :
-        avg_combined.write('Flat_{}.fits'.format(str(exp)), overwrite=True)
+c = Combiner(flats.ccds(ccd_kwargs={'unit':u.adu}))
+c.sigma_clipping() #dev_func
+avg_combined = c.average_combine()
+if teles == "XLT" :
+    avg_combined.write('Flat.fit', overwrite=True)
+elif teles in ("LJT","HCT") :
+    avg_combined.write('Flat.fits', overwrite=True)
 
 print('--- DONE ---')
