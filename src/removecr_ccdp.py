@@ -52,11 +52,14 @@ print('Spectra after flat field correction:\n' + ", ".join(p for p in objall))
 co_targets.summary
 stdspec = str(raw_input("Enter filename of the standard star spectra \
 (separated by ',' for more than 1): "))
+if 'fit' not in stdspec:
+    stdspec = str(raw_input("Enter filename (including the file extension) of the standard star spectra \
+(separated by ',' for more than 1): "))
+stdspec = re.sub('\s+', '', stdspec)
 stdlist = re.split(',|,\s+', stdspec)
 stdexptime = []
-for stdspec in stdlist:
-    stdspec = stdspec.strip('.fits') + '.fits'
-    hdr = fits.getheader(stdspec)
+for specfile in stdlist:
+    hdr = fits.getheader(specfile)
     exptime = float(hdr['EXPTIME'])
     stdexptime.append(exptime)
 stdexptime = np.array(stdexptime)

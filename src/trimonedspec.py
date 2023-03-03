@@ -5,7 +5,7 @@ from astropy.io import fits
 import json
 import sys
 import os
-from pathlib2 import Path 
+from pathlib import Path 
 import shutil
 import re
 import platform
@@ -49,10 +49,7 @@ except:
         json.dump(settings,f)
 
 
-try:
-    Path("./onedbak").mkdir()
-except:
-    pass
+Path("./onedbak").mkdir(exist_ok=True)
 
 try:
     onedlist1 = glob.glob('*_*0001.fits')
