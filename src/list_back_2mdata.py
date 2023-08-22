@@ -11,7 +11,7 @@ import glob
 import os
 from pathlib import Path
 import shutil
-import multiprocess as mp
+import multiprocessing as mp
 import json
 import datetime
 from astropy.time import Time
@@ -287,11 +287,18 @@ if teles=='LJT':
         tb = tb[tb['FILTER1']!=slit_item]
     df = tb.to_pandas()
     df.loc[df.FILTER.str.contains('lamp_neon_helium'),'OBSTYPE'] = 'CAL'
+    df.loc[df.FILTER.str.contains('lamp_fe_argon'),'OBSTYPE'] = 'CAL'
     df.OBSTYPE = df.OBSTYPE.str.replace('EXPERIMENTAL', 'EXPOSE')
     df.loc[
         (df.FILTER.str.contains('grism')) & (df.FILTER.str.contains('slit'))
-        & (~df.FILTER.str.contains('lamp_neon_helium')), 'OBSTYPE'] = 'SCI'
+        & (~df.FILTER.str.contains('lamp_neon_helium'))
+        & (~df.FILTER.str.contains('lamp_fe_argon')), 'OBSTYPE'] = 'SCI'
     df.loc[df.FILTER.str.contains('lamp_halogen'), 'OBSTYPE'] = 'LAMPFLAT'
+elif teles=='HCT':
+    df['OBJECT_low'] = df.OBJECT.str.lower()
+    df.loc[(df.IMAGETYP.str.contains('lamp') 
+            & (~df.OBJECT_low.str.contains('halogen'))),'IMAGETYP'] = 'CAL'
+    df.loc[df.OBJECT_low.str.contains('halogen'), 'IMAGETYP'] = 'LAMPFLAT'
 
 
 imglist = df.FILENAME
@@ -302,8 +309,10 @@ df.to_csv('imglist.csv', index=False)
 
 if __name__ == '__main__':
     try:
-        pool = mp.Pool(mp.cpu_count())
-        pool.starmap(backup_raw, zip(imglist, newname))
+        # pool = mp.Pool(mp.cpu_count())
+        # pool.starmap(backup_raw, zip(imglist, newname))
+        for img, newname in zip(imglist, newname):
+            backup_raw(img, newname)
         print('Copying raw files finished.')
     except FileNotFoundError:
         print('File not found. The files might '+
@@ -337,8 +346,8 @@ elif teles=='LJT':
 elif teles=='HCT':
     list_bias = glob.glob('bias*.fits')
     list_obj = glob.glob('object*.fits')
-    list_flat = glob.glob('flat*.fits')
-    list_lamp = glob.glob('lamp*.fits')
+    list_flat = glob.glob('lampflat*.fits')
+    list_lamp = glob.glob('cal*.fits')
     list_flatnall = list_flat.copy()
     list_flatnall.extend(list_lamp)
     list_flatnall.extend(list_obj)

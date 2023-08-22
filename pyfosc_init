@@ -72,7 +72,7 @@ select opt in "${options[@]}" "Quit"; do
     TELESCOPE="HCT"
     echo "You picked $opt which is option $REPLY."
     while true; do
-    read -p "Enter the slit you have used (e.g. s134; s167):" slit
+    read -p "Enter the slit you have used (e.g. s167; s134):" slit
     read -p "Enter the Grism you have used (e.g. Gr7):" Grism
     render_template $BASEDIR/config/instrconfig.json.temp > ./myfosc.json
     read -p "Do you want to copy the raw files to ./raw?[y/n]" yn
