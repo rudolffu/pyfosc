@@ -14,6 +14,7 @@ else:
 
 basepath = os.path.dirname(sys.argv[0])
 myonedstds = os.path.join(basepath, '../iraf_data/onedstds')
+myonedstds = os.path.abspath(myonedstds)
 with open('myfosc.json') as file:
     settings = json.loads(file.read())
 teles = settings['mysettings']['telescope']
@@ -59,8 +60,8 @@ dirnames = [os.path.basename(os.path.dirname(x)) for x in stdlist]
 print("The \"onedstds\" dirs containing your standard star:\n" +
       ", ".join(p for p in dirnames))
 stddir = str(raw_input("Enter name of the onedstds directory: "))
-mycaldir = "onedstds$" + stddir + '/'
-
+# mycaldir = "onedstds$" + stddir + '/'
+mycaldir = f"{myonedstds}/{stddir}/"
 
 iraf.twodspec()
 iraf.twodspec.longslit()
