@@ -10,7 +10,6 @@ import glob
 import os
 from pathlib import Path
 import shutil
-import multiprocess as mp
 import json
 import datetime
 from astropy.time import Time
