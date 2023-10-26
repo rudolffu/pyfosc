@@ -32,6 +32,9 @@ wnew = f_w(xnew)
 xnew = np.round(xnew, 3)
 ynew = np.round(ynew, 3)
 wnew = np.round(wnew, 3)
+xnew = np.concatenate((xnew, [df.wave.values[-1]]))
+ynew = np.concatenate((ynew, [df.AB_mag.values[-1]]))
+wnew = np.concatenate((wnew, [df.weight.values[-1]]))
 
 # plot the resampled spectrum
 plt.figure()
