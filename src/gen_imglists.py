@@ -52,8 +52,8 @@ elif teles=='LJT':
 elif teles=='HCT':
     list_bias = glob.glob('bias*.fits')
     list_obj = glob.glob('object*.fits')
-    list_flat = glob.glob('flat*.fits')
-    list_lamp = glob.glob('lamp*.fits')
+    list_flat = glob.glob('lampflat*.fits')
+    list_lamp = glob.glob('cal*.fits')
     list_flatnall = list_flat.copy()
     list_flatnall.extend(list_lamp)
     list_flatnall.extend(list_obj)
