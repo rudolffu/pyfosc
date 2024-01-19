@@ -19,6 +19,8 @@ flats = ImageFileCollection('./',filenames=flat_list)
 c = Combiner(flats.ccds(ccd_kwargs={'unit':u.adu}))
 c.sigma_clipping() #dev_func
 avg_combined = c.average_combine()
+avg_combined.mask = None
+avg_combined.uncertainty = None
 if teles == "XLT" :
     avg_combined.write('Flat.fit', overwrite=True)
 elif teles in ("LJT","HCT") :
