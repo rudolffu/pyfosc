@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
 BASEDIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" >/dev/null 2>&1 && pwd )"
 SRCDIR=$BASEDIR/src
-python $SRCDIR/makezero2m.py
-python $SRCDIR/ccdotz.py
+python $SRCDIR/makezero_ccdp.py
+python $SRCDIR/ccdotz_ccdp.py
 python $SRCDIR/makeflat2m.py
 python $SRCDIR/makereflat2m.py
 python $SRCDIR/divideflat2m.py
