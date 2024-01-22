@@ -13,7 +13,7 @@ YFOSC (Yunnan-Faint Object Spectrograph and Camera) is an instrument of the 2.4-
 
 
 ```sh
-conda install -c astropy ccdproc photutils
+conda install -c astropy ccdproc
 ```
 
 ### 1.1. Dependencies
