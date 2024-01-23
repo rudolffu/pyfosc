@@ -68,8 +68,10 @@ elif teles == "LJT":
         iraf.ccdred.ccdproc.biassec = '[2100:2148,2591:3340]'
         iraf.ccdred.ccdproc.trimsec = '[751:1450,2591:3340]'
     elif Grism == "G14":
-        iraf.ccdred.ccdproc.biassec = '[2100:2148,1901:4200]'
-        iraf.ccdred.ccdproc.trimsec = '[751:1450,1901:4200]'
+        # iraf.ccdred.ccdproc.biassec = '[2100:2148,1901:4200]'
+        # iraf.ccdred.ccdproc.trimsec = '[751:1450,1901:4200]'
+        iraf.ccdred.ccdproc.biassec = '[2100:2148,2280:4200]'
+        iraf.ccdred.ccdproc.trimsec = '[751:1450,2280:4200]' # new trimsec as of 2023-11-02
     iraf.ccdred.ccdproc(images='@flatnall.list', overscan='yes',
                         trim='yes', zerocor='yes', zero='Zero')
 elif teles == "HCT":
