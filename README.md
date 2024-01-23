@@ -78,9 +78,9 @@ pyfosc_run.sh
 ```
 Alternatively, you can run the scripts step by step, following the order as:
 ```
-makezero2m.py     # Combine zero(bias) frames.
+makezero_ccdp.py     # Combine zero(bias) frames.
 ccdotz.py         # Do zero(bias), overscan correction and trimming.
-makeflat2m.py     # Combine flat fields.
+makeflat2m_ccdp.py     # Combine flat fields.
 makereflat2m.py   # Do (illumination) normalization and get perfect flat.
 divideflat2m.py   # Do flat correction.
 removecr_ccdp.py  # Remove cosmic rays in two-d images. Please go to 3. Credits for more information.
