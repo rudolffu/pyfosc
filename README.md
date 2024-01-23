@@ -37,7 +37,7 @@ You can use `git clone` to download this package.
 git clone https://github.com/rudolffu/pyfosc.git
 ```
 
-To checkout the current branch (`py3dev`), use
+To checkout the python3 development branch (`py3dev`), use
 ```bash
 git checkout py3dev
 ```
