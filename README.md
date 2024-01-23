@@ -11,24 +11,33 @@ YFOSC (Yunnan-Faint Object Spectrograph and Camera) is an instrument of the 2.4-
 
 ## 1. Installation 
 
-
-```sh
-conda install -c astropy ccdproc
-```
-
 ### 1.1. Dependencies
 ```
 IRAF
 PyRAF
 pandas
+ccdproc
 ```
-This package depends on [IRAF](http://iraf.noao.edu/) and [PyRAF](http://www.stsci.edu/institute/software_hardware/pyraf). Although these two softwares will no longer be supported by their developers, you can still download and install the [IRAF Community Distribution](https://iraf-community.github.io/).
+
+`pandas` is already included in the Anaconda distribution. To install `ccdproc` with `conda`, you can use:
+```sh
+conda install -c astropy ccdproc
+```
+or
+```sh
+conda install -c conda-forge ccdproc
+```
+
+This package depends on [IRAF](http://iraf.noao.edu/) and [PyRAF](http://www.stsci.edu/institute/software_hardware/pyraf). You can download and install the [IRAF Community Distribution](https://iraf-community.github.io/).
+
 ### 1.2. Install the [IRAF/PyRAF Community Distribution](https://iraf-community.github.io/)
 
 For detailed description on how to install IRAF and PyRAF, visit:
 - https://iraf-community.github.io/install.html
 - https://iraf-community.github.io/x11iraf.html
 - https://iraf-community.github.io/pyraf.html
+
+If you are using a Mac with Apple Silicon (M1/M2), you can follow the instructions in [this blog post](https://yumingfu.space/tech/2024-iraf-mac-installation/) to install IRAF/PyRAF.
 
 ### 1.3. Download PyFOSC and set environment variable for it.
 
@@ -37,7 +46,7 @@ You can use `git clone` to download this package.
 git clone https://github.com/rudolffu/pyfosc.git
 ```
 
-To checkout the current branch (`py3dev`), use
+To checkout the python3 development branch (`py3dev`), use
 ```bash
 git checkout py3dev
 ```
@@ -78,9 +87,9 @@ pyfosc_run.sh
 ```
 Alternatively, you can run the scripts step by step, following the order as:
 ```
-makezero2m.py     # Combine zero(bias) frames.
+makezero_ccdp.py     # Combine zero(bias) frames.
 ccdotz.py         # Do zero(bias), overscan correction and trimming.
-makeflat2m.py     # Combine flat fields.
+makeflat2m_ccdp.py     # Combine flat fields.
 makereflat2m.py   # Do (illumination) normalization and get perfect flat.
 divideflat2m.py   # Do flat correction.
 removecr_ccdp.py  # Remove cosmic rays in two-d images. Please go to 3. Credits for more information.
