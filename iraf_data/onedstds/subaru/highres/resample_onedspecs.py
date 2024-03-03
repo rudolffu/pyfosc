@@ -16,10 +16,21 @@ filename = sys.argv[1]
 abspath = os.path.abspath(filename)
 output_path = os.path.dirname(os.path.dirname(abspath))
 objname = sys.argv[2]
-# get the filename without the extension
-df = pd.read_csv(filename, sep='\s+', 
-                 header=None, 
-                 names=['wave', 'AB_mag', 'weight'])
+# check if the file has 3 columns
+with open(filename, 'r') as f:
+    first_line = f.readline()
+    
+if len(first_line.split()) == 2:
+    print('The file does not contain the weight column.'
+          ' Assuming all weights are 1.')
+    df = pd.read_csv(filename, sep='\s+',
+                        header=None,
+                        names=['wave', 'AB_mag'])
+    df['weight'] = 1
+elif len(first_line.split()) == 3:
+    df = pd.read_csv(filename, sep='\s+',
+                        header=None,
+                        names=['wave', 'AB_mag', 'weight'])
 
 # resample the spectrum to 20-Angstrom bins
 from scipy.interpolate import interp1d

@@ -1,32 +1,22 @@
 #!/usr/bin/env python
 import glob
-# import pyds9
-from pyraf import iraf
+import ccdproc as ccdp
+from ccdproc import ImageFileCollection
+from astropy.nddata import CCDData
 
 
-print('Loading IRAF packages ...')
-iraf.imred()
-iraf.ccdred()
+# do flat correction on all the images in specall.list
+# read in the list of images as a list of strings
+with open('specall.list', 'r') as f:
+    images = f.readlines()
+images = [x.strip() for x in images]
+specall = ImageFileCollection('./',filenames=images)
+good_flat = CCDData.read('perFlat.fits', unit='adu')
 
-print('unlearning previous settings...')
-iraf.ccdred.unlearn()
-iraf.ccdred.ccdproc.unlearn()
-
-print('Dividing perFlat...')
-iraf.ccdred.ccdproc.ccdtype = ''
-iraf.ccdred.ccdproc.noproc = False
-iraf.ccdred.ccdproc.fixpix = False
-iraf.ccdred.ccdproc.overscan = False
-iraf.ccdred.ccdproc.darkcor = False
-iraf.ccdred.ccdproc.illumcor = False
-iraf.ccdred.ccdproc.fringecor = False
-iraf.ccdred.ccdproc.readcor = False
-iraf.ccdred.ccdproc.scancor = False
-iraf.ccdred.ccdproc.readaxis = 'line'
-iraf.ccdred.ccdproc.zerocor = False
-iraf.ccdred.ccdproc.flatcor = True
-iraf.ccdred.ccdproc.flat = 'perFlat'
-iraf.ccdred.ccdproc.trim = False
-iraf.ccdred.ccdproc(images='@specall.list', output='f//@specall.list')
-
-print('--- DONE ---')
+for hdu, fname in specall.hdus(return_fname=True):
+    # read in the image
+    img = ccdp.CCDData.read(fname, unit='adu')
+    img = ccdp.flat_correct(img, good_flat)
+    # write the image to disk
+    img.write('f'+fname, overwrite=True)
+    print('Flat corrected', fname)
