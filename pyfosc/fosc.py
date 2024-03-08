@@ -24,12 +24,32 @@ from ccdproc import ImageFileCollection
 from matplotlib.colors import LogNorm
 
 
-class BasicCCDMixin:
-    def plot_image(self, 
-                   log_scale=True, 
-                   use_wcs=False,
-                   cmap='gray',
+class BasicCCDMixin():
+    """A mixin class for CCDData objects"""
+    def plot_image(self, log_scale=True, 
+                   use_wcs=False, cmap='gray',
                    vmin=None, vmax=None):
+        """
+        Plot the image data with optional log scale 
+            and WCS projection.
+        Parameters
+        ----------
+        log_scale : bool, optional
+            If True, use log scale for the image.
+        use_wcs : bool, optional
+            If True, use the WCS projection for the image.
+        cmap : str, optional
+            The colormap for the image.
+        vmin : float, optional
+            The minimum value for the image.
+        vmax : float, optional
+            The maximum value for the image.
+        
+        Returns
+        -------
+        None
+            
+        """    
         data = self.data
         if vmin is None and vmax is None:
             vmin = np.percentile(data, 1)
@@ -51,8 +71,21 @@ class BasicCCDMixin:
     
 
 class SpecImage(BasicCCDMixin, CCDData):
+    """A class for 2d spectral images"""
     def __init__(self, ccddata, disp_axis=None,
                  *args, **kwd):
+        """
+        Parameters
+        ----------
+        ccddata : CCDData
+            The CCDData object to be used.
+        disp_axis : int, optional
+            The dispersion axis of the image.
+        *args : list
+            Additional positional arguments.
+        **kwd : dict
+            Additional keyword arguments.
+        """
         super().__init__(ccddata, *args, **kwd)
         self._disp_axis = disp_axis
         
@@ -64,6 +97,18 @@ class SpecImage(BasicCCDMixin, CCDData):
              key_uncertainty_type="UTYPE",
              hdu_psf="PSFIMAGE",
              **kwd):
+        """
+        Read a spectral image from a file and 
+            return a SpecImage object.
+        Parameters
+        ----------
+        filename : str
+            The filename of the image.
+        hdu : int, optional
+            The HDU to read from the file.
+        unit : astropy.unit or str, optional
+            The unit of the image data.
+        """
         ccddata = super().read(filename, 
                                 hdu, unit, 
                                 hdu_uncertainty, 
