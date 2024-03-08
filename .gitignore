@@ -5,3 +5,7 @@
 .vscode
 testcfg.py
 plotanyonedsp.py
+
+# python installaion files
+__pycache__
+*.egg-info
