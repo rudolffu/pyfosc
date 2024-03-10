@@ -3,6 +3,8 @@
 
 __Please note: This program is under active development. The documentation may be inconsistent with the latest codes.__
 
+__IRAF/PyRAF installation guide for Mac with Apple Silicon (M1/M2) can be found [here](https://yumingfu.space/tech/2024-iraf-mac-installation/).__
+
 PyFOSC is a pipeline toolbox for long-slit spectroscopy data reduction written in Python. It can be used for FOSC (Faint Object Spectrograph and Camera) data from Xinglong/Lijiang 2-meter telescopes.  
 
 BFOSC (Beijing-Faint Object Spectrograph and Camera) is an instrument of the 2.16-m Telescope in Xinglong Observatory, National Astronomical Observatories, Chinese Academy of Sciences (NAOC) (IAU code: 327, coordinates: 40°23′39″ N, 117°34′30″ E). For more information about BFOSC, please see http://www.xinglong-naoc.org/html/en/gcyq/216/detail-18.html.
