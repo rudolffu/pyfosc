@@ -46,10 +46,6 @@ You can use `git clone` to download this package.
 git clone https://github.com/rudolffu/pyfosc.git
 ```
 
-To checkout the python3 development branch (`py3dev`), use
-```bash
-git checkout py3dev
-```
 In order to run PyFOSC commands in the terminal, you need to add the path of PyFOSC and its sub-directory `src` to $PATH, by editing `~/.bashrc` (Linux, e.g., Ubuntu) or `~/.bash_profile` (Mac OS). An example of this can be:
 ```Bash
 export PATH=/Your/Path/to/pyfosc:$PATH
