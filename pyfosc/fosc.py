@@ -12,6 +12,7 @@ import astropy.units as u
 import pandas as pd
 import numpy as np
 import os
+import re
 import shutil
 import multiprocessing as mp
 from pathlib import Path
@@ -70,7 +71,8 @@ class BasicCCDMixin():
         else:
             projection = None
             
-        fig, ax = plt.subplots(subplot_kw={'projection': projection})
+        fig, ax = plt.subplots(figsize=(12, 12),
+                               subplot_kw={'projection': projection})
         im = ax.imshow(data, cmap=cmap, norm=norm, origin='lower')
         plt.colorbar(im, ax=ax, label=self.unit)
         plt.show()
@@ -217,3 +219,123 @@ class SlitImage(BasicCCDMixin, CCDData):
         
         plt.tight_layout()
         plt.show()
+
+
+class FOSCFileCollection(ImageFileCollection):
+    """A class for managing FOSC data files based on ImageFileCollection"""
+    def __init__(self, location=None, keywords=None, 
+                 find_fits_by_reading=False, filenames=None, 
+                 glob_include=None, glob_exclude=None, ext=0):
+        """
+        Parameters
+        ----------
+        location : str or Path
+            The location of the data files.
+        keywords : dict, optional
+            The keywords to use for filtering the data files.
+        find_fits_by_reading : bool, optional
+            If True, search for FITS files by reading the headers.
+        filenames : list, optional
+            The list of filenames to use.
+        glob_include : str, optional
+            The glob pattern to include files.
+        glob_exclude : str, optional    
+            The glob pattern to exclude files.
+        ext : int, optional
+            The extension of the FITS file to use.
+        """
+        super().__init__(location, keywords, 
+                         find_fits_by_reading, 
+                         filenames, glob_include, 
+                         glob_exclude, ext)
+        self.table = self.summary
+        
+    def check_groups(self, grism=None, slit=None, telescope=None):
+        """
+        Check the groups of files based on grism, slit, and telescope.
+        
+        Parameters
+        ----------
+        grism : str, optional
+            The grism name.
+        slit : str, optional
+            The slit name.
+        telescope : str, optional
+            The telescope name.
+        """
+        tbs = self.table
+        if telescope is None:
+            if 'Xinglong' in tbs['telescop'][0]:
+                telescope = 'XLT'
+            if '2m4' in tbs['telescop'][0]:
+                telescope = 'LJT'
+            if 'HCT' in tbs['telescop'][0]:
+                telescope = 'HCT'
+        filter_arr = np.unique(tbs['filter'].value.data)
+        filter_components = [re.split(r'_|\*', s) for s in filter_arr]
+        filter_components = np.unique(filter_components) 
+        self.slit = self.find_filter_comp(filter_components,
+                                          'slit', 
+                                          comp=slit)
+        self.grism = self.find_filter_comp(filter_components,
+                                           'grism',
+                                           comp=grism, 
+                                           comp_key='G')
+        if telescope == 'XLT':
+            self.list_bias = self.files_filtered(obstype='BIAS').tolist()
+            self.list_flat = self.files_filtered(obstype='SPECLFLAT').tolist()
+            self.list_cal = self.files_filtered(obstype='SPECLLAMP').tolist()
+            self.list_sci = self.files_filtered(obstype='SPECLTARGET').tolist()
+            self.list_allbutbias = self.files_filtered(
+                regex_match=True, 
+                obstype='SPECLFLAT|SPECLLAMP|SPECLTARGET').tolist()
+            self.list_sci_cal = self.files_filtered(
+                regex_match=True, 
+                obstype='SPECLTARGET|SPECLLAMP').tolist()
+            self.list_slitimg = self.files_filtered(obstype='SLITTARGET').tolist()
+    
+    def find_filter_comp(self, filter_components, comp_name, comp=None, comp_key=None):
+        """
+        Find a filter component (slit or grism) based on the filter strings.
+        
+        Parameters
+        ----------
+        filter_components : list
+            The list of filter components.
+        comp_name : str
+            The name of the filter component.
+        comp : str, optional
+            The filter component to search for.
+        comp_key : str, optional
+            The matching pattern to use for searching the filter component.
+        """
+        if comp_key is None:
+            comp_key = comp_name
+        comp_list = [s for s in filter_components 
+                     if ((comp_key in s) or (comp_name in s))]
+        if len(comp_list) == 1:
+            comp_guessed = comp_list[0]
+            print(f'{comp_name} found:', comp_guessed)
+            if comp is not None:
+                if comp_guessed == comp:
+                    print(f'{comp_name} matches the input ({comp_name}={comp})')
+                else:
+                    comp_list = [comp_guessed, comp]
+                    print(f'{comp_name} does not match the input '
+                          f'(1. {comp_name} found={comp_guessed}, '
+                          f'2. {comp_name} input={comp})')
+                    comp_index = int(
+                        input(f'Enter the index of the {comp_name} '
+                              f'(enter 1 for {comp_guessed} and 2 for {comp}.): '))
+                    comp = comp_list[comp_index-1]       
+        elif len(comp_list) > 1:
+            print(f'Multiple {comp_name}s found:')
+            for i, comp in enumerate(comp_list):
+                print(f'{i+1}: {comp}')
+                comp_index = int(
+                    input(f'Enter the index of the {comp_name} '
+                          f'(enter {i+1} for {comp}, etc.): '))
+                comp = comp_list[comp_index-1]
+        else:
+            print('No {comp_name} found. Please check the {comp_name} names.')
+        return comp      
