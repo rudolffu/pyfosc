@@ -31,7 +31,7 @@ class BasicCCDMixin():
     """A mixin class for CCDData objects"""
     def plot_image(self, log_scale=False, use_wcs=False, cmap='viridis',
                    vmin=None, vmax=None, percentile_range=(1, 99), 
-                   normalization=None):
+                   normalization=None, ax=None):
         """
         Plot the image data with options for scaling, WCS projection, and colormap.
         
@@ -50,12 +50,16 @@ class BasicCCDMixin():
             The lower and upper percentiles to use for automatic vmin/vmax calculation.
         normalization : matplotlib.colors.Normalize or subclass, optional
             Custom normalization. Overrides log_scale if provided.
+        ax : matplotlib.axes.Axes, optional
+            The existing axes to plot in. If None, plot in a new figure.
         
         Returns
         -------
         None
         """
         data = self.data
+        framename = self.framename
+        frametype = self.frametype
         if vmin is None or vmax is None:
             vmin, vmax = np.percentile(data, percentile_range)
         
@@ -71,17 +75,29 @@ class BasicCCDMixin():
         else:
             projection = None
             
-        fig, ax = plt.subplots(figsize=(12, 12),
-                               subplot_kw={'projection': projection})
+        if ax is None:
+            fig, ax = plt.subplots(figsize=(12, 12),
+                                   subplot_kw={'projection': projection})
+        else:
+            fig = ax.figure
         im = ax.imshow(data, cmap=cmap, norm=norm, origin='lower')
-        plt.colorbar(im, ax=ax, label=self.unit)
-        plt.show()
-    
+        if framename is not None or frametype is not None:
+            ax.set_title(f'{frametype} {framename}')
+        plt.colorbar(im, ax=ax, label=self.unit, 
+                     orientation='horizontal', shrink=0.6, pad=0.1)
+        return ax
+        
+        # im = ax.imshow(data, cmap=cmap, norm=norm, origin='lower')
+        # plt.colorbar(im, ax=ax, label=self.unit, 
+        #              orientation='horizontal', shrink=0.6, pad=0.1)
+        # plt.show()
+        # return ax
     
 
 class SpecImage(BasicCCDMixin, CCDData):
     """A class for 2d spectral images"""
     def __init__(self, ccddata, disp_axis=None,
+                 framename=None, frametype=None,
                  *args, **kwd):
         """
         Parameters
@@ -97,6 +113,8 @@ class SpecImage(BasicCCDMixin, CCDData):
         """
         super().__init__(ccddata, *args, **kwd)
         self._disp_axis = disp_axis
+        self.framename = framename
+        self.frametype = frametype
         
     @classmethod
     def read(cls, filename, hdu=0, unit=None,
@@ -124,6 +142,11 @@ class SpecImage(BasicCCDMixin, CCDData):
                                 hdu_mask, hdu_flags, 
                                 key_uncertainty_type, 
                                 hdu_psf, **kwd)
+        cls.framename = os.path.basename(filename)
+        try:
+            cls.frametype = ccddata.header['OBSTYPE']
+        except KeyError:
+            cls.frametype = None
         return cls(ccddata)
         
     @property
