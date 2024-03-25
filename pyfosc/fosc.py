@@ -24,6 +24,8 @@ import ccdproc as ccdp
 from ccdproc import ImageFileCollection
 from matplotlib.colors import LogNorm, Normalize
 from matplotlib.patches import Rectangle
+import yaml
+
 
 
 
@@ -96,58 +98,27 @@ class BasicCCDMixin():
 
 class SpecImage(BasicCCDMixin, CCDData):
     """A class for 2d spectral images"""
-    def __init__(self, ccddata, disp_axis=None,
-                 framename=None, frametype=None,
-                 *args, **kwd):
+    def __init__(self, *args, disp_axis=None, framename=None, frametype=None, **kwd):
         """
-        Parameters
-        ----------
-        ccddata : CCDData
-            The CCDData object to be used.
-        disp_axis : int, optional
-            The dispersion axis of the image.
-        *args : list
-            Additional positional arguments.
-        **kwd : dict
-            Additional keyword arguments.
+        Enhanced constructor to handle additional properties specific to spectral images.
         """
-        super().__init__(ccddata, *args, **kwd)
+        # If header is provided in kwd, move it to meta for compatibility with CCDData
+        if 'header' in kwd:
+            kwd['meta'] = kwd.pop('header')
+        super().__init__(*args, **kwd)
         self._disp_axis = disp_axis
-        self.framename = framename
-        self.frametype = frametype
+        self.framename = framename or (os.path.basename(kwd.get('filename')) if 'filename' in kwd else None)
+        self.frametype = frametype or self.meta.get('OBSTYPE', None)
         
     @classmethod
-    def read(cls, filename, hdu=0, unit=None,
-             hdu_uncertainty="UNCERT",
-             hdu_mask="MASK",
-             hdu_flags=None,
-             key_uncertainty_type="UTYPE",
-             hdu_psf="PSFIMAGE",
-             **kwd):
+    def read(cls, filename, **kwd):
         """
-        Read a spectral image from a file and 
-            return a SpecImage object.
-        Parameters
-        ----------
-        filename : str
-            The filename of the image.
-        hdu : int, optional
-            The HDU to read from the file.
-        unit : astropy.unit or str, optional
-            The unit of the image data.
+        Reads a spectral image from a file and returns a SpecImage object.
         """
-        ccddata = super().read(filename, 
-                                hdu, unit, 
-                                hdu_uncertainty, 
-                                hdu_mask, hdu_flags, 
-                                key_uncertainty_type, 
-                                hdu_psf, **kwd)
-        cls.framename = os.path.basename(filename)
-        try:
-            cls.frametype = ccddata.header['OBSTYPE']
-        except KeyError:
-            cls.frametype = None
-        return cls(ccddata)
+        ccddata = super().read(filename, **kwd)
+        framename = os.path.basename(filename)
+        frametype = ccddata.meta.get('OBSTYPE', None)
+        return cls(ccddata, framename=framename, frametype=frametype, **kwd)
         
     @property
     def disp_axis(self):
@@ -272,6 +243,7 @@ class FOSCFileCollection(ImageFileCollection):
                          filenames, glob_include, 
                          glob_exclude, ext)
         self.table = self.summary
+        # self.parameters = {}
         
     def check_groups(self, grism=None, slit=None, telescope=None):
         """
@@ -294,6 +266,7 @@ class FOSCFileCollection(ImageFileCollection):
                 telescope = 'LJT'
             if 'HCT' in tbs['telescop'][0]:
                 telescope = 'HCT'
+        self.telescope = telescope
         filter_arr = np.unique(tbs['filter'].value.data)
         filter_components = [re.split(r'_|\*', s) for s in filter_arr]
         filter_components = np.unique(filter_components) 
@@ -304,7 +277,7 @@ class FOSCFileCollection(ImageFileCollection):
                                            'grism',
                                            comp=grism, 
                                            comp_key='G')
-        if telescope == 'XLT':
+        if self.telescope == 'XLT':
             self.list_bias = self.files_filtered(obstype='BIAS').tolist()
             self.list_flat = self.files_filtered(obstype='SPECLFLAT').tolist()
             self.list_cal = self.files_filtered(obstype='SPECLLAMP').tolist()
@@ -350,7 +323,9 @@ class FOSCFileCollection(ImageFileCollection):
                     comp_index = int(
                         input(f'Enter the index of the {comp_name} '
                               f'(enter 1 for {comp_guessed} and 2 for {comp}.): '))
-                    comp = comp_list[comp_index-1]       
+                    comp = comp_list[comp_index-1]
+            else:
+                comp = comp_guessed       
         elif len(comp_list) > 1:
             print(f'Multiple {comp_name}s found:')
             for i, comp in enumerate(comp_list):
@@ -360,5 +335,82 @@ class FOSCFileCollection(ImageFileCollection):
                           f'(enter {i+1} for {comp}, etc.): '))
                 comp = comp_list[comp_index-1]
         else:
-            print('No {comp_name} found. Please check the {comp_name} names.')
+            print(f'No {comp_name} found. Please check the {comp_name} names.')
         return comp      
+
+    def set_parameters(self, grism=None, telescope=None, config_file=None):
+        """
+        Set parameters based on grism and telescope, optionally overridden by a YAML configuration file.
+        
+        Parameters
+        ----------
+        grism : str
+            The grism name.
+        telescope : str
+            The telescope name.
+        config_file : str, optional
+            Path to a YAML configuration file containing user-defined parameters.
+        """
+        # Default parameters
+        if telescope is None:
+            telescope = self.telescope
+        if grism is None:
+            grism = self.grism
+        default_params = {
+            'XLT_NewG4': {
+                'trimsec': '[51:1750,681:1350]', 
+                'disp_axis': 0, 
+                'overscan': False
+                },
+            'XLT_G4': {
+                'trimsec': '[51:1750,681:1350]', 
+                'disp_axis': 0, 
+                'overscan': False
+                },
+            # Add more telescope-grism pairs and their parameters as needed
+        }
+        
+        # Fetch the default parameters for the given telescope-grism pair
+        key = f"{telescope}_{grism}"
+        params = default_params.get(key, {})
+        
+        # Load user-defined parameters from YAML if provided
+        if config_file:
+            with open(config_file, 'r') as f:
+                user_params = yaml.safe_load(f)
+                
+                # Check if the user_params contains the specific telescope-grism key
+                if key in user_params:
+                    # Update the default parameters with any user overrides
+                    params.update(user_params[key])
+        
+        self.parameters = params
+        print(f"Parameters set for {telescope}-{grism}: {self.parameters}")
+
+    def write_parameters_to_file(self, output_file, grism=None, telescope=None):
+        """
+        Write the current parameters to a YAML file, including grism and telescope keys.
+        
+        Parameters
+        ----------
+        output_file : str
+            The path to the output YAML file where parameters will be written.
+        grism : str
+            The grism name.
+        telescope : str
+            The telescope name.
+        """
+        if not self.parameters:
+            print("No parameters to write.")
+            return
+        if telescope is None:
+            telescope = self.telescope
+        if grism is None:
+            grism = self.grism
+        # Creating a nested dictionary with grism and telescope as keys
+        params_to_write = {f"{telescope}_{grism}": self.parameters}
+        
+        with open(output_file, 'w') as f:
+            yaml.dump(params_to_write, f, default_flow_style=False)
+            
+        print(f"Parameters written to {output_file}.")
