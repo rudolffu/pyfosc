@@ -11,7 +11,10 @@ from ccdproc import ImageFileCollection
 from pathlib import Path
 import os
 from .fosc import SpecImage
-
+from scipy.interpolate import interp1d
+from astropy.stats import sigma_clip
+from astropy.modeling import models, fitting
+import astropy.units as u
 
 
 
@@ -140,3 +143,70 @@ class MasterFlat(MasterBuilder):
         axes[1].imshow(mask, origin='lower', cmap='binary')
         axes[1].set_title('Derived mask')
         plt.show()
+
+
+class FlatNormalizer:
+    """Class to normalize flat field frames."""
+    def __init__(self, master_flat, disp_axis):
+        """
+        Parameters
+        ----------
+        master_flat : SpecImage(ccdproc.CCDData)
+            The master flat field frame.
+        """
+        self.master_flat = master_flat
+        self.disp_axis = disp_axis
+        self.normalized_flat = None
+        
+    def dispersion_correct(self):
+        # check if disp_axis is 1 (horizontal). if 0, transpose the data
+        master_flat = self.master_flat
+        if self.disp_axis == 0:
+            master_flat.data = master_flat.data.T
+        length_spatial = self.master_flat.data.shape[0]
+        length_disp = self.master_flat.data.shape[1]
+        # get the central 1/3 rows of the flat
+        spatial_start = length_spatial // 3
+        spatial_end = 2 * length_spatial // 3
+        cent_section = master_flat.data[spatial_start:spatial_end, :]
+        cent_median = np.median(cent_section, axis=0)
+        fitter = fitting.FittingWithOutlierRemoval(
+            fitting.LinearLSQFitter(), sigma_clip, 
+            niter=5,
+            sigma=2)
+        model_init = models.Legendre1D(degree=25)
+        model_fit, mask = fitter(model_init, np.arange(length_disp), cent_median)
+        # plot the fit and the residuals
+        x = np.arange(length_disp)
+        y = model_fit(x)
+        residuals = cent_median - y
+        fig, axes = plt.subplots(3, 1, figsize=(12, 8), sharex=True,
+                                 gridspec_kw={'height_ratios': [2, 1, 6],
+                                              'hspace': 0})
+        axes[0].plot(cent_median, color='black', label='data')
+        axes[0].set_title(
+            f'Median profile of row {spatial_start} '
+            f'to {spatial_end} along the dispersion axis')
+        axes[0].plot(y, color='red', label='fit')
+        axes[0].legend()
+        axes[1].plot(residuals, color='black', label='residuals')
+        axes[1].legend()
+        master_flat.plot_image(ax=axes[2])
+        axes[2].set_aspect('auto')
+        axes[2].set_title(None)
+        plt.show()
+        # divide the 2d master_flat by the 1d fit
+        disp_corr_flat = master_flat.copy()
+        disp_corr_flat.data /= y
+        disp_corr_flat.unit = u.dimensionless_unscaled
+        if self.disp_axis == 0:
+            disp_corr_flat.data = disp_corr_flat.data.T
+        self.disp_corr_flat = disp_corr_flat
+        disp_corr_flat.plot_image()
+        
+    def spatial_correct(self):
+        # check if self.disp_corr_flat exists, if not, run dispersion_correct
+        if not hasattr(self, 'disp_corr_flat'):
+            self.dispersion_correct()
+        
+        

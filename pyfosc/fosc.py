@@ -359,12 +359,12 @@ class FOSCFileCollection(ImageFileCollection):
         default_params = {
             'XLT_NewG4': {
                 'trimsec': '[51:1750,681:1350]', 
-                'disp_axis': 0, 
+                'disp_axis': 1, 
                 'overscan': False
                 },
             'XLT_G4': {
                 'trimsec': '[51:1750,681:1350]', 
-                'disp_axis': 0, 
+                'disp_axis': 1, 
                 'overscan': False
                 },
             # Add more telescope-grism pairs and their parameters as needed
