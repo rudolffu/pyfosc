@@ -1,21 +1,21 @@
 #!/usr/bin/env python
 # coding: utf-8
+import os
 import numpy as np
-import ccdproc as ccdp
 import matplotlib.pyplot as plt
+from pathlib import Path
+from scipy.interpolate import interp1d
+from scipy.ndimage import convolve, gaussian_filter
 from astropy.coordinates import SkyCoord, Angle, EarthLocation, AltAz
 from astropy.io import fits
 from astropy.wcs import WCS
 from astropy.nddata import CCDData
-from ccdproc import ImageFileCollection
-from pathlib import Path
-import os
-from .fosc import SpecImage
-from scipy.interpolate import interp1d
 from astropy.stats import sigma_clip
 from astropy.modeling import models, fitting
 import astropy.units as u
-
+import ccdproc as ccdp
+from ccdproc import ImageFileCollection
+from .fosc import SpecImage
 
 
 class MasterBuilder:
@@ -147,18 +147,35 @@ class MasterFlat(MasterBuilder):
 
 class FlatNormalizer:
     """Class to normalize flat field frames."""
-    def __init__(self, master_flat, disp_axis):
+    def __init__(self, master_flat, disp_axis,
+                 work_dir=None):
         """
         Parameters
         ----------
         master_flat : SpecImage(ccdproc.CCDData)
             The master flat field frame.
+        disp_axis : int
+            The dispersion axis of the spectrograph. 
+            0 for vertical, 1 for horizontal (python indexing).
+        work_dir : str, optional
+            The working directory. The default is None.
         """
         self.master_flat = master_flat
         self.disp_axis = disp_axis
         self.normalized_flat = None
+        if work_dir is None:
+            work_dir = os.getcwd()
+        self.work_dir = work_dir
         
-    def dispersion_correct(self):
+    def dispersion_correct(self, degree=25):
+        """
+        Correct for the (near blackbody) spectrum of the halogen lamp.
+        
+        Parameters
+        ----------
+        degree : int, optional
+            The degree of the Legendre1D polynomial fit. The default is 25. 
+        """
         # check if disp_axis is 1 (horizontal). if 0, transpose the data
         master_flat = self.master_flat
         if self.disp_axis == 0:
@@ -174,7 +191,7 @@ class FlatNormalizer:
             fitting.LinearLSQFitter(), sigma_clip, 
             niter=5,
             sigma=2)
-        model_init = models.Legendre1D(degree=25)
+        model_init = models.Legendre1D(degree=degree)
         model_fit, mask = fitter(model_init, np.arange(length_disp), cent_median)
         # plot the fit and the residuals
         x = np.arange(length_disp)
@@ -198,15 +215,48 @@ class FlatNormalizer:
         # divide the 2d master_flat by the 1d fit
         disp_corr_flat = master_flat.copy()
         disp_corr_flat.data /= y
+        disp_corr_flat.uncertainty.array /= y
         disp_corr_flat.unit = u.dimensionless_unscaled
+        disp_corr_flat.uncertainty.unit = u.dimensionless_unscaled
         if self.disp_axis == 0:
             disp_corr_flat.data = disp_corr_flat.data.T
         self.disp_corr_flat = disp_corr_flat
         disp_corr_flat.plot_image()
         
-    def spatial_correct(self):
+    def spatial_correct(self, gauss_sigma=10, save=False, output_file=None):
+        """
+        Correct for spatial variations in the flat field with a gaussian filter.
+        
+        Parameters
+        ----------
+        gauss_sigma : int, optional
+            The sigma value for the gaussian filter. The default is 10.
+        save : bool, optional
+            Save the normalized flat. The default is False.
+        output_file : str, optional
+            The name of the output file. The default is 'normalized_flat.fits'.
+        """
         # check if self.disp_corr_flat exists, if not, run dispersion_correct
         if not hasattr(self, 'disp_corr_flat'):
             self.dispersion_correct()
-        
-        
+        if output_file is None:
+            output_file = 'normalized_flat.fits'
+        disp_corr_flat = self.disp_corr_flat
+        smooth_dc_flat = gaussian_filter(
+            disp_corr_flat.data, sigma=gauss_sigma)
+        normalized_flat = disp_corr_flat.copy()
+        normalized_flat.data /= smooth_dc_flat
+        normalized_flat.uncertainty.array /= smooth_dc_flat
+        median_of_flat = np.median(normalized_flat.data)
+        normalized_flat.data /= median_of_flat
+        normalized_flat.uncertainty.array /= median_of_flat
+        normalized_flat.unit = u.dimensionless_unscaled
+        normalized_flat.framename = 'normalized_flat.fits'
+        normalized_flat.plot_image()
+        self.normalized_flat = normalized_flat
+        if save==True:
+            output_dir = Path(self.work_dir) / 'MasterFrames'
+            output_dir.mkdir(parents=True, exist_ok=True)
+            output_file = Path(output_dir) / output_file
+            normalized_flat.write(output_file, overwrite=True)
+            print(f'Normalized flat saved as {output_file}')
