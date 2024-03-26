@@ -253,7 +253,7 @@ class FlatNormalizer:
         normalized_flat.unit = u.dimensionless_unscaled
         normalized_flat.framename = 'normalized_flat.fits'
         normalized_flat.header['HISTORY'] = 'Flat normalized'
-        normalized_flat.header['BUNIT'] = 'dimensionless'
+        normalized_flat.header['BUNIT'] = ''
         normalized_flat.plot_image()
         self.normalized_flat = normalized_flat
         if save==True:
