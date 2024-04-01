@@ -111,10 +111,15 @@ class SpecImage(BasicCCDMixin, CCDData):
         self.frametype = frametype or self.meta.get('OBSTYPE', None)
         
     @classmethod
-    def read(cls, filename, **kwd):
+    def read(cls, filename, fix=False, **kwd):
         """
         Reads a spectral image from a file and returns a SpecImage object.
         """
+        if fix is True:
+            hdu = fits.open(filename, mode='update')
+            hdu[0].verify('fix')
+            hdu.flush()
+            hdu.close()
         ccddata = super().read(filename, **kwd)
         framename = os.path.basename(filename)
         frametype = ccddata.meta.get('OBSTYPE', None)
@@ -281,13 +286,15 @@ class FOSCFileCollection(ImageFileCollection):
             self.list_bias = self.files_filtered(obstype='BIAS').tolist()
             self.list_flat = self.files_filtered(obstype='SPECLFLAT').tolist()
             self.list_cal = self.files_filtered(obstype='SPECLLAMP').tolist()
-            self.list_sci = self.files_filtered(obstype='SPECLTARGET').tolist()
+            self.list_sci = self.files_filtered(
+                regex_match=True,
+                obstype='SPECLTARGET|SPECLFLUXREF').tolist()
             self.list_allbutbias = self.files_filtered(
                 regex_match=True, 
-                obstype='SPECLFLAT|SPECLLAMP|SPECLTARGET').tolist()
+                obstype='SPECLFLAT|SPECLLAMP|SPECLTARGET|SPECLFLUXREF').tolist()
             self.list_sci_cal = self.files_filtered(
                 regex_match=True, 
-                obstype='SPECLTARGET|SPECLLAMP').tolist()
+                obstype='SPECLTARGET|SPECLLAMP|SPECLFLUXREF').tolist()
             self.list_slitimg = self.files_filtered(obstype='SLITTARGET').tolist()
     
     def find_filter_comp(self, filter_components, comp_name, comp=None, comp_key=None):

@@ -98,7 +98,7 @@ class MasterBuilder:
         master_frame = SpecImage(master_frame, 
                                  framename=output_file, 
                                  frametype=self.frametype)
-        if save==True:
+        if save is True:
             output_dir = Path(self.work_dir) / 'MasterFrames'
             output_dir.mkdir(parents=True, exist_ok=True)
             output_file = Path(output_dir) / output_file
@@ -167,9 +167,9 @@ class FlatNormalizer:
             work_dir = os.getcwd()
         self.work_dir = work_dir
         
-    def dispersion_correct(self, degree=25):
+    def response_correct(self, degree=25):
         """
-        Correct for the (near blackbody) spectrum of the halogen lamp.
+        Correct for the (near blackbody) spectrum response of the halogen lamp.
         
         Parameters
         ----------
@@ -213,19 +213,20 @@ class FlatNormalizer:
         axes[2].set_title(None)
         plt.show()
         # divide the 2d master_flat by the 1d fit
-        disp_corr_flat = master_flat.copy()
-        disp_corr_flat.data /= y
-        disp_corr_flat.uncertainty.array /= y
-        disp_corr_flat.unit = u.dimensionless_unscaled
-        disp_corr_flat.uncertainty.unit = u.dimensionless_unscaled
+        resp_corr_flat = master_flat.copy()
+        resp_corr_flat.data /= y
+        resp_corr_flat.uncertainty.array /= y
+        resp_corr_flat.unit = u.dimensionless_unscaled
+        resp_corr_flat.uncertainty.unit = u.dimensionless_unscaled
         if self.disp_axis == 0:
-            disp_corr_flat.data = disp_corr_flat.data.T
-        self.disp_corr_flat = disp_corr_flat
-        disp_corr_flat.plot_image()
+            resp_corr_flat.data = resp_corr_flat.data.T
+        self.resp_corr_flat = resp_corr_flat
+        resp_corr_flat.plot_image()
         
-    def spatial_correct(self, gauss_sigma=10, save=False, output_file=None):
+    def illumination_correct(self, gauss_sigma=10, save=False, output_file=None):
         """
-        Correct for spatial variations in the flat field with a gaussian filter.
+        Correct for spatial variations caused by illumination
+        in the flat field with a gaussian filter.
         
         Parameters
         ----------
@@ -236,15 +237,15 @@ class FlatNormalizer:
         output_file : str, optional
             The name of the output file. The default is 'normalized_flat.fits'.
         """
-        # check if self.disp_corr_flat exists, if not, run dispersion_correct
-        if not hasattr(self, 'disp_corr_flat'):
+        # check if self.resp_corr_flat exists, if not, run dispersion_correct
+        if not hasattr(self, 'resp_corr_flat'):
             self.dispersion_correct()
         if output_file is None:
             output_file = 'normalized_flat.fits'
-        disp_corr_flat = self.disp_corr_flat
+        resp_corr_flat = self.resp_corr_flat
         smooth_dc_flat = gaussian_filter(
-            disp_corr_flat.data, sigma=gauss_sigma)
-        normalized_flat = disp_corr_flat.copy()
+            resp_corr_flat.data, sigma=gauss_sigma)
+        normalized_flat = resp_corr_flat.copy()
         normalized_flat.data /= smooth_dc_flat
         normalized_flat.uncertainty.array /= smooth_dc_flat
         median_of_flat = np.median(normalized_flat.data)
@@ -256,7 +257,7 @@ class FlatNormalizer:
         normalized_flat.header['BUNIT'] = ''
         normalized_flat.plot_image()
         self.normalized_flat = normalized_flat
-        if save==True:
+        if save is True:
             output_dir = Path(self.work_dir) / 'MasterFrames'
             output_dir.mkdir(parents=True, exist_ok=True)
             output_file = Path(output_dir) / output_file

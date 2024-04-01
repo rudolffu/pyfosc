@@ -8,8 +8,10 @@ with open("README.md", "r", encoding="utf-8") as fh:
 requirements = [
     "astropy",
     "ccdproc",
-    # "photutils",
-    "multiprocess"
+    "specutils",
+    # "multiprocess",
+    # "synphot",
+    "specreduce"
     ]
 
 setuptools.setup(
