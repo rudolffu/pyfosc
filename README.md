@@ -19,6 +19,9 @@ IRAF
 PyRAF
 pandas
 ccdproc
+specutils
+specreduce
+PyAstronomy
 ```
 
 `pandas` is already included in the Anaconda distribution. To install `ccdproc` with `conda`, you can use:
@@ -29,6 +32,22 @@ or
 ```sh
 conda install -c conda-forge ccdproc
 ```
+
+`specutils` is a package for representing and manipulating spectroscopic data in Python. You can install it with:
+```sh
+conda install conda-forge::specutils
+```
+or 
+```sh
+pip install specutils
+```
+
+`specreduce` is a package for tracing and extracting 1d spectra. You can install it with:
+```sh
+pip install git+https://github.com/astropy/specreduce.git
+```
+
+`PyAstronomy` is currently used to write IRAF format 1d spectra. See [PyAstronomy](https://pyastronomy.readthedocs.io/en/latest/pyaCDoc/installingPyA.html) for installation instructions.
 
 This package depends on [IRAF](http://iraf.noao.edu/) and [PyRAF](http://www.stsci.edu/institute/software_hardware/pyraf). You can download and install the [IRAF Community Distribution](https://iraf-community.github.io/).
 
@@ -43,18 +62,27 @@ If you are using a Mac with Apple Silicon (M1/M2), you can follow the instructio
 
 ### 1.3. Download PyFOSC and set environment variable for it.
 
-You can use `git clone` to download this package.  
+You can use `git clone` to download this package and checkout the `py3dev` branch:  
 ```bash
 git clone https://github.com/rudolffu/pyfosc.git
+git checkout py3dev
 ```
 
-In order to run PyFOSC commands in the terminal, you need to add the path of PyFOSC and its sub-directory `src` to $PATH, by editing `~/.bashrc` (Linux, e.g., Ubuntu) or `~/.bash_profile` (Mac OS). An example of this can be:
+Now you can install the development version of `pyfosc` package with:
+```sh
+cd pyfosc
+python -m pip install -e .
+```
+
+In order to run PyFOSC commands in the terminal, you need to add the path of PyFOSC and its sub-directory `src` to $PATH, by editing `~/.bashrc` (Linux, e.g., Ubuntu) or `~/.bash_profile` (Mac OS version before Catalina) or `~/.zshrc` (Mac OS Catalina and later versions). An example of this can be:
 ```Bash
 export PATH=/Your/Path/to/pyfosc:$PATH
 export PATH=/Your/Path/to/pyfosc/src:$PATH
 ```
 
 ## 2. Usage
+
+**New documentation under development!**
 
 ### 2.1 Preparation
 
