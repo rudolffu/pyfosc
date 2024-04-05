@@ -42,6 +42,9 @@ class Extract1dSpec:
         self.ic_2dspec = ic_2dspec
         self.filenames = ic_2dspec.files
         self.data_dir = ic_2dspec.location
+        if qa_dir is None:
+            qa_dir = Path(self.data_dir)/'../QAplots'
+            qa_dir.mkdir(exist_ok=True)
         self.trace_list = trace_list
         self.qa_dir = qa_dir
         peak_list = [np.argmax(np.sum(im.data, axis=1)) for im in self.ic_2dspec.ccds()]
@@ -89,6 +92,7 @@ class Extract1dSpec:
             axes[1].remove()
             axes[1] = fig.add_subplot(ax1, projection=sp.wcs)
             sp.plot(axes=axes[1])
+            axes[1].set_title(f'Extracted 1d spectrum of {fname}')
             plt.savefig(f'{self.qa_dir}/trace_{fname}.pdf')
         self.trace_list = trace_list
         
@@ -102,7 +106,7 @@ class Extract1dSpec:
             else:
                 raise ValueError('ic_lamp or list of lamp files must be provided')
         if mean_trace is None:
-            mean_trace = np.mean(self.trace_list)
+            mean_trace = np.mean(self.trace_list, axis=0)
         for i, (im, fname) in enumerate(ic_lamp.ccds(return_fname=True)):
             im = SpecImage(im)
             trace = specreduce.tracing.ArrayTrace(
@@ -123,5 +127,5 @@ class Extract1dSpec:
             fig, ax = plt.subplots(figsize=(8, 4),
                                 subplot_kw={'projection': sp.wcs})
             sp.plot(axes=ax)
-            ax.set_title(fname)
+            ax.set_title(f'Extracted 1d spectrum of {fname}')
             plt.savefig(f'{self.qa_dir}/lamp1d_{fname}.pdf')
