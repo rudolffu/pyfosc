@@ -14,6 +14,13 @@ requirements = [
     "specreduce"
     ]
 
+extras_require = {
+    'gui': [
+        "pyqtgraph",
+        "pyqt5"
+    ]
+}
+
 setuptools.setup(
     name="pyfosc", 
     version="2.0.0-alpha",
@@ -30,5 +37,6 @@ setuptools.setup(
         "Operating System :: OS Independent",
     ],
     install_requires=requirements,
+    extras_require=extras_require,
     python_requires='>=3.7',
 )

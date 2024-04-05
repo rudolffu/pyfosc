@@ -3,18 +3,23 @@ import sys
 import numpy as np
 from gwcs import coordinate_frames as cf
 from gwcs import wcs
-import pyqtgraph as pg
 from astropy import units as u
-from PyQt5.QtGui import QCursor, QFont 
-from PyQt5.QtCore import Qt, QThread
-from PyQt5.QtWidgets import QApplication, QFrame, QWidget, QInputDialog
-from pyqtgraph.dockarea import DockArea, Dock
 from specbox.basemodule import SpecIRAF
 from specutils import Spectrum1D
 from scipy.optimize import curve_fit
 from scipy.signal import find_peaks
 from specutils.manipulation import FluxConservingResampler, LinearInterpolatedResampler
 from .utils import linear_fit_poly1D
+
+try:
+    from PyQt5.QtGui import QCursor, QFont 
+    from PyQt5.QtCore import Qt, QThread
+    from PyQt5.QtWidgets import QApplication, QFrame, QWidget, QInputDialog
+    import pyqtgraph as pg
+    from pyqtgraph.dockarea import DockArea, Dock
+except ImportError:
+    raise Warning("PyQt5 or pyqtgraph is not installed. GUI functions will not work.")
+    
 
 class WaveCalibrator:
     """

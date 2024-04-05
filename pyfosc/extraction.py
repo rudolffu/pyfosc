@@ -12,23 +12,18 @@ from pathlib import Path
 import shutil
 import multiprocessing as mp
 import json
-import datetime
 from astropy.time import Time
-import warnings
 from ccdproc import ImageFileCollection
 import ccdproc as ccdp
 from astropy.nddata import CCDData
 import astropy.units as u
 import specreduce
 from specutils import Spectrum1D, SpectrumCollection
-from specbox.basemodule import SpecIRAF
-from astropy.modeling import models, fitting
 from astropy.stats import sigma_clip
 from specutils.manipulation import FluxConservingResampler, LinearInterpolatedResampler
 from PyAstronomy import pyasl
 
 from .fosc import FOSCFileCollection,SpecImage
-from .masters import MasterBias, MasterFlat, FlatNormalizer
 
 
 class Extract1dSpec:
