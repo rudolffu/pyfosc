@@ -26,11 +26,11 @@ PyAstronomy
 
 `pandas` is already included in the Anaconda distribution. To install `ccdproc` with `conda`, you can use:
 ```sh
-conda install -c astropy ccdproc
+conda install astropy::ccdproc
 ```
 or
 ```sh
-conda install -c conda-forge ccdproc
+conda install conda-forge::ccdproc
 ```
 
 `specutils` is a package for representing and manipulating spectroscopic data in Python. You can install it with:
@@ -65,12 +65,12 @@ If you are using a Mac with Apple Silicon (M1/M2), you can follow the instructio
 You can use `git clone` to download this package and checkout the `py3dev` branch:  
 ```bash
 git clone https://github.com/rudolffu/pyfosc.git
+cd pyfosc
 git checkout py3dev
 ```
 
 Now you can install the development version of `pyfosc` package with:
 ```sh
-cd pyfosc
 python -m pip install -e .
 ```
 
@@ -84,9 +84,7 @@ export PATH=/Your/Path/to/pyfosc/src:$PATH
 
 **New documentation under development!**
 
-### 2.1 Preparation
-
-#### 2.1.1 Run `pyfosc_init` to begin
+### 2.1. Preparation: Run `pyfosc_init` to begin
 
 First go to the working directory which contains FOSC spectroscopic data.
 Run `pyfosc_init` from the terminal:
@@ -94,53 +92,41 @@ Run `pyfosc_init` from the terminal:
 pyfosc_init
 ```
 
-#### 2.1.2 Generate lists of files
+### 2.2. Running the pipeline (currently in a python + pyraf hybrid mode)
 
-As PyFOSC pipeline reduce data grouped by different types (bias, flat, object, etc), make sure you have lists of fits files as follows:
+#### 2.2.1. Basic reduction with a new script/jupyter notebook (to be uploaded)
+
+The basic reduction steps include:
+- Bias construction and subtraction, and CCD trimming
+- Flat field construction and correction
+- Cosmic ray removal
+- Tracing and extraction of 1d spectra
+
+#### 2.2.2. Go to the `data` directory and run the command-line scripts 
+
 ```
-zero.list --------------- List of bias files (e.g. bias*.fits).
-flat.list --------------- List of flat field files (e.g. flat*.fits).
-objall.list ------------- List of 2d spectra images of all objects (science targets and standard stars).
-lampall.list ------------ List of all 2d lamp spectra images.
-flatnall.list ----------- List of 2d images that need zero correction (flat.list + lampall.list + objall.list).
-specall.list ------------ List of all 2d spectra images (objall.list + lampall.list).
+cd data
 ```
 
-### 2.2 Running the pipeline
-You can run `pyfosc_run.sh` from the terminal:
-```
-pyfosc_run.sh
-```
-Alternatively, you can run the scripts step by step, following the order as:
-```
-makezero_ccdp.py     # Combine zero(bias) frames.
-ccdotz.py         # Do zero(bias), overscan correction and trimming.
-makeflat2m_ccdp.py     # Combine flat fields.
-makereflat2m.py   # Do (illumination) normalization and get perfect flat.
-divideflat2m.py   # Do flat correction.
-removecr_ccdp.py  # Remove cosmic rays in two-d images. Please go to 3. Credits for more information.
-doapall.py        # Extract spectra.
+The remaining steps include:
+- Wavelength calibration
+- Flux calibration
+- Telluric correction
+
+These steps can be done with the following scripts:
+
+```bash
 reidentlamp2m.py  # Reidentify lamp spectra with previously stored ones.
 #Can use identlamp2m.py instead to identify lamp by oneself.
 wavecal2m.py      # Do wavelength calibration, flux calibration.
 telluric_base2m.py # Telluric correction and one-d spectra extraction.
 ```
 
-Plot all final 1d spectra with:
-```
-plotonedsp.py
-```
-
-Move some intermediate files into `INTMD` directory:
-```
-mvintmd.sh
-```
-
 ## 3. Credits
 
 This software uses BSD 3-Clause License.  
 
-Copyright (c) 2019, Yuming Fu  
+Copyright (c) 2019-2024, Yuming Fu  
 All rights reserved.  
 
 This software contains sources from third-party softwares.  
