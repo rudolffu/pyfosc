@@ -18,6 +18,9 @@ import ccdproc as ccdp
 from astropy.nddata import CCDData
 import astropy.units as u
 import specreduce
+from specreduce.tracing import FitTrace, ArrayTrace
+from specreduce.background import Background
+from specreduce.extract import HorneExtract, BoxcarExtract
 from specutils import Spectrum1D, SpectrumCollection
 from astropy.stats import sigma_clip
 from specutils.manipulation import FluxConservingResampler, LinearInterpolatedResampler
@@ -60,15 +63,15 @@ class Extract1dSpec:
                 guess = self.median_peak
             if abs(sum_pro.argmax()-guess)<=50:
                 guess = sum_pro.argmax()                
-            trace = specreduce.tracing.FitTrace(
+            trace = FitTrace(
                 im, 
                 bins=bins, 
                 peak_method=peak_method, 
                 window=window,
                 guess=guess)
             trace_list.append(trace.trace.data)
-            bg = specreduce.background.Background.one_sided(im, trace, separation=2, width=20)
-            extract = specreduce.extract.HorneExtract(im-bg, trace)
+            bg = Background.one_sided(im, trace, separation=2, width=20)
+            extract = HorneExtract(im-bg, trace)
             sp = extract.spectrum
             sp_hdr = im.header
             sp_hdr['CTYPE1'] = 'PIXEL'
@@ -109,9 +112,8 @@ class Extract1dSpec:
             mean_trace = np.mean(self.trace_list, axis=0)
         for i, (im, fname) in enumerate(ic_lamp.ccds(return_fname=True)):
             im = SpecImage(im)
-            trace = specreduce.tracing.ArrayTrace(
-                im, mean_trace)
-            extract = specreduce.extract.BoxcarExtract(im, trace)
+            trace = ArrayTrace(im, mean_trace)
+            extract = BoxcarExtract(im, trace)
             sp = extract.spectrum
             sp_hdr = im.header
             sp_hdr['CTYPE1'] = 'PIXEL'
