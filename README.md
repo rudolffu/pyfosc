@@ -1,5 +1,5 @@
 # PyFOSC
-[![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.3915021.svg)](https://doi.org/10.5281/zenodo.3915021)  
+[![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.10967240.svg)](https://doi.org/10.5281/zenodo.10967240)  
 
 __Please note: This program is under active development. The documentation may be inconsistent with the latest codes.__
 
@@ -139,19 +139,19 @@ Please see `COPYRIGHT` file and `pyfosc$doc/LICENSES` directory for detailed cop
 
 ## 4. How to cite
 
-Yuming Fu. (2020, June 29). PyFOSC: a pipeline toolbox for BFOSC/YFOSC long-slit spectroscopy data reduction (Version v1.0.1). Zenodo. https://doi.org/10.5281/zenodo.3915021
+Yuming Fu. (2024, April 13). PyFOSC: a pipeline toolbox for BFOSC/YFOSC long-slit spectroscopy data reduction (Version v1.1.0). Zenodo. https://doi.org/10.5281/zenodo.10967240
 
-Cite the current version (v1.0.1) with bibtex:  
+Cite the current version (v1.1.0) with bibtex:  
 
 ```
-@software{yuming_fu_2020_3915021,
+@software{yuming_fu_2024_10967240,
   author       = {Yuming Fu},
   title        = {{PyFOSC: a pipeline toolbox for BFOSC/YFOSC long-slit spectroscopy data reduction}},
-  month        = jun,
-  year         = 2020,
+  month        = apr,
+  year         = 2024,
   publisher    = {Zenodo},
-  version      = {v1.0.1},
-  doi          = {10.5281/zenodo.3915021},
-  url          = {https://doi.org/10.5281/zenodo.3915021}
+  version      = {v1.1.0},
+  doi          = {10.5281/zenodo.10967240},
+  url          = {https://doi.org/10.5281/zenodo.10967240}
 }
 ```
