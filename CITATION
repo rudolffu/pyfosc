@@ -1,10 +1,10 @@
-@software{fu_2020_pyfosc,
+@software{yuming_fu_2024_10967240,
   author       = {Yuming Fu},
   title        = {{PyFOSC: a pipeline toolbox for BFOSC/YFOSC long-slit spectroscopy data reduction}},
-  month        = jun,
-  year         = 2020,
+  month        = apr,
+  year         = 2024,
   publisher    = {Zenodo},
-  version      = {v1.0.1},
-  doi          = {10.5281/zenodo.3915021},
-  url          = {https://doi.org/10.5281/zenodo.3915021}
+  version      = {v1.1.0},
+  doi          = {10.5281/zenodo.10967240},
+  url          = {https://doi.org/10.5281/zenodo.10967240}
 }

@@ -1,5 +1,5 @@
 # PyFOSC
-[![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.3915021.svg)](https://doi.org/10.5281/zenodo.3915021)  
+[![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.10967240.svg)](https://doi.org/10.5281/zenodo.10967240)  
 
 __Please note: This program is under active development. The documentation may be inconsistent with the latest codes.__
 
@@ -90,7 +90,7 @@ ccdotz.py         # Do zero(bias), overscan correction and trimming.
 makeflat2m_ccdp.py     # Combine flat fields.
 makereflat2m.py   # Do (illumination) normalization and get perfect flat.
 divideflat2m.py   # Do flat correction.
-removecr_ccdp.py  # Remove cosmic rays in two-d images. Please go to 3. Credits for more information.
+removecr_ccdp.py  # Remove cosmic rays in two-d images using ccdproc. 
 doapall.py        # Extract spectra.
 reidentlamp2m.py  # Reidentify lamp spectra with previously stored ones.
 #Can use identlamp2m.py instead to identify lamp by oneself.
@@ -112,32 +112,32 @@ mvintmd.sh
 
 This software uses BSD 3-Clause License.  
 
-Copyright (c) 2019, Yuming Fu  
+Copyright (c) 2019-2024, Yuming Fu  
 All rights reserved.  
 
 This software contains sources from third-party softwares.  
 
 The `pyfosc$iraf_data/onedstds` directory is from `IRAF`, and it contains standard calibration data for extinction and sensitivity calibration.  
 
-The `pyfosc$iraf_task/lacos_im.cl` script is the `IRAF` version for Laplacian Cosmic Ray Identification by Pieter G. van Dokkum (Yale) from http://www.astro.yale.edu/dokkum/lacosmic/. L.A.Cosmic is an algorithm for robust cosmic ray identification. It detects cosmic rays of arbitrary shapes and sizes, and distinguishes between undersampled point sources and cosmic rays. If you use this program please refer to P. G. van Dokkum, 2001, PASP, 113, 1420.  
+The `removecr_ccdp.py` script uses the [`ccdproc.cosmicray_lacosmic`](https://ccdproc.readthedocs.io/en/latest/api/ccdproc.cosmicray_lacosmic.html#ccdproc.cosmicray_lacosmic) module to remove cosmic rays. The `ccdproc.cosmicray_lacosmic` module is based on the L.A.Cosmic algorithm for Laplacian Cosmic Ray Identification by Pieter G. van Dokkum (Yale) from http://www.astro.yale.edu/dokkum/lacosmic/. L.A.Cosmic detects cosmic rays of arbitrary shapes and sizes, and distinguishes between undersampled point sources and cosmic rays. If you use this program please refer to P. G. van Dokkum, 2001, PASP, 113, 1420.  
 
 Please see `COPYRIGHT` file and `pyfosc$doc/LICENSES` directory for detailed copyright information.  
 
 ## 4. How to cite
 
-Yuming Fu. (2020, June 29). PyFOSC: a pipeline toolbox for BFOSC/YFOSC long-slit spectroscopy data reduction (Version v1.0.1). Zenodo. https://doi.org/10.5281/zenodo.3915021
+Yuming Fu. (2024, April 13). PyFOSC: a pipeline toolbox for BFOSC/YFOSC long-slit spectroscopy data reduction (Version v1.1.0). Zenodo. https://doi.org/10.5281/zenodo.10967240
 
-Cite the current version (v1.0.1) with bibtex:  
+Cite the current version (v1.1.0) with bibtex:  
 
 ```
-@software{yuming_fu_2020_3915021,
+@software{yuming_fu_2024_10967240,
   author       = {Yuming Fu},
   title        = {{PyFOSC: a pipeline toolbox for BFOSC/YFOSC long-slit spectroscopy data reduction}},
-  month        = jun,
-  year         = 2020,
+  month        = apr,
+  year         = 2024,
   publisher    = {Zenodo},
-  version      = {v1.0.1},
-  doi          = {10.5281/zenodo.3915021},
-  url          = {https://doi.org/10.5281/zenodo.3915021}
+  version      = {v1.1.0},
+  doi          = {10.5281/zenodo.10967240},
+  url          = {https://doi.org/10.5281/zenodo.10967240}
 }
 ```
