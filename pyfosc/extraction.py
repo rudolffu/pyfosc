@@ -17,6 +17,7 @@ from ccdproc import ImageFileCollection
 import ccdproc as ccdp
 from astropy.nddata import CCDData
 import astropy.units as u
+from astropy.modeling import models, fitting
 import specreduce
 from specreduce.tracing import FitTrace, ArrayTrace
 from specreduce.background import Background
@@ -30,7 +31,8 @@ from .fosc import FOSCFileCollection,SpecImage
 
 
 class Extract1dSpec:
-    def __init__(self, ic_2dspec=None, filenames=None, data_dir=None, trace_list=None, qa_dir=None):
+    def __init__(self, ic_2dspec=None, filenames=None, data_dir=None, disp_axis=None,
+                 trace_list=None, qa_dir=None):
         if ic_2dspec is not None:
             if not isinstance(ic_2dspec, (ImageFileCollection, FOSCFileCollection)):
                 raise ValueError(
@@ -45,12 +47,19 @@ class Extract1dSpec:
         self.ic_2dspec = ic_2dspec
         self.filenames = ic_2dspec.files
         self.data_dir = ic_2dspec.location
+        if disp_axis is None:
+            im = SpecImage(
+                os.path.join(self.data_dir, self.filenames[0]), unit=u.electron)
+            disp_axis = np.argmax(im.data.shape)
+        self.disp_axis = disp_axis
+        self.spatial_axis = 1 - disp_axis
         if qa_dir is None:
             qa_dir = Path(self.data_dir)/'../QAplots'
             qa_dir.mkdir(exist_ok=True)
         self.trace_list = trace_list
         self.qa_dir = qa_dir
-        peak_list = [np.argmax(np.sum(im.data, axis=1)) for im in self.ic_2dspec.ccds()]
+        peak_list = [np.argmax(np.sum(im.data, 
+                                      axis=self.disp_axis)) for im in self.ic_2dspec.ccds()]
         median_peak = np.median(peak_list)
         self.median_peak = median_peak
         
@@ -58,11 +67,21 @@ class Extract1dSpec:
         trace_list = []    
         for i, (im, fname) in enumerate(self.ic_2dspec.ccds(return_fname=True)):
             im = SpecImage(im)
+            if self.disp_axis == 0:
+                im.data = im.data.T
+                im.uncertainty.array = im.uncertainty.array.T
             sum_pro = np.sum(im.data, axis=1)
             if guess is None:
                 guess = self.median_peak
             if abs(sum_pro.argmax()-guess)<=50:
-                guess = sum_pro.argmax()                
+                guess = sum_pro.argmax()   
+            # get the central 100 pixels of the summed profile
+            cent_pro = sum_pro[int(guess)-50:int(guess)+50] 
+            # fit a gaussian to the summed profile at the guessed location
+            g_init = models.Gaussian1D(amplitude=np.max(cent_pro), mean=50, stddev=5.)
+            g_fitter = fitting.LMLSQFitter()
+            g_fitted = g_fitter(g_init, np.arange(len(cent_pro)), cent_pro)
+            std_pro = g_fitted.stddev.value
             trace = FitTrace(
                 im, 
                 bins=bins, 
@@ -70,7 +89,8 @@ class Extract1dSpec:
                 window=window,
                 guess=guess)
             trace_list.append(trace.trace.data)
-            bg = Background.one_sided(im, trace, separation=2, width=20)
+            bg = Background.two_sided(
+                im, trace, separation=2.8*std_pro, width=1*std_pro)
             extract = HorneExtract(im-bg, trace)
             sp = extract.spectrum
             sp_hdr = im.header
@@ -112,6 +132,9 @@ class Extract1dSpec:
             mean_trace = np.mean(self.trace_list, axis=0)
         for i, (im, fname) in enumerate(ic_lamp.ccds(return_fname=True)):
             im = SpecImage(im)
+            if self.disp_axis == 0:
+                im.data = im.data.T
+                im.uncertainty.array = im.uncertainty.array.T
             trace = ArrayTrace(im, mean_trace)
             extract = BoxcarExtract(im, trace)
             sp = extract.spectrum

@@ -180,8 +180,9 @@ class FlatNormalizer:
         master_flat = self.master_flat
         if self.disp_axis == 0:
             master_flat.data = master_flat.data.T
-        length_spatial = self.master_flat.data.shape[0]
-        length_disp = self.master_flat.data.shape[1]
+            master_flat.uncertainty.array = master_flat.uncertainty.array.T
+        length_spatial = master_flat.data.shape[0]
+        length_disp = master_flat.data.shape[1]
         # get the central 1/3 rows of the flat
         spatial_start = length_spatial // 3
         spatial_end = 2 * length_spatial // 3
@@ -220,6 +221,7 @@ class FlatNormalizer:
         resp_corr_flat.uncertainty.unit = u.dimensionless_unscaled
         if self.disp_axis == 0:
             resp_corr_flat.data = resp_corr_flat.data.T
+            resp_corr_flat.uncertainty.array = resp_corr_flat.uncertainty.array.T
         self.resp_corr_flat = resp_corr_flat
         resp_corr_flat.plot_image()
         

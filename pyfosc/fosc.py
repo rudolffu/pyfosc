@@ -4,7 +4,7 @@ import matplotlib.pyplot as plt
 from astropy.coordinates import SkyCoord, Angle, EarthLocation, AltAz
 from astropy.io import fits
 from astropy.wcs import WCS
-from astropy.nddata import CCDData
+from astropy.nddata import CCDData, NDDataArray
 from astropy.table import vstack,Table
 from astropy.time import Time
 from astropy.stats import sigma_clip
@@ -105,7 +105,12 @@ class SpecImage(BasicCCDMixin, CCDData):
         # If header is provided in kwd, move it to meta for compatibility with CCDData
         if 'header' in kwd:
             kwd['meta'] = kwd.pop('header')
-        super().__init__(*args, **kwd)
+        # get the value of args
+        if len(args) == 1:
+            if isinstance(args[0], NDDataArray) or isinstance(args[0], np.ndarray):
+                super().__init__(*args, **kwd)
+            elif isinstance(args[0], str) or isinstance(args[0], Path):
+                super().__init__(CCDData.read(args[0], **kwd), **kwd)
         self._disp_axis = disp_axis
         self.framename = framename or (os.path.basename(kwd.get('filename')) if 'filename' in kwd else None)
         self.frametype = frametype or self.meta.get('OBSTYPE', None)
@@ -273,16 +278,13 @@ class FOSCFileCollection(ImageFileCollection):
                 telescope = 'HCT'
         self.telescope = telescope
         filter_arr = np.unique(tbs['filter'].value.data)
-        filter_components = [re.split(r'_|\*', s) for s in filter_arr]
-        filter_components = np.unique(filter_components) 
-        self.slit = self.find_filter_comp(filter_components,
-                                          'slit', 
-                                          comp=slit)
-        self.grism = self.find_filter_comp(filter_components,
-                                           'grism',
-                                           comp=grism, 
-                                           comp_key='G')
         if self.telescope == 'XLT':
+            filter_components = [re.split(r'_|\*', s) for s in filter_arr]
+            filter_components = np.unique(filter_components) 
+            self.slit = self.find_filter_comp(
+                filter_components,'slit', comp=slit)
+            self.grism = self.find_filter_comp(
+                filter_components,'grism',comp=grism, comp_key='G')
             self.list_bias = self.files_filtered(obstype='BIAS').tolist()
             self.list_flat = self.files_filtered(obstype='SPECLFLAT').tolist()
             self.list_cal = self.files_filtered(obstype='SPECLLAMP').tolist()
@@ -296,6 +298,23 @@ class FOSCFileCollection(ImageFileCollection):
                 regex_match=True, 
                 obstype='SPECLTARGET|SPECLLAMP|SPECLFLUXREF').tolist()
             self.list_slitimg = self.files_filtered(obstype='SLITTARGET').tolist()
+        elif self.telescope == 'LJT':
+            filter_components = [re.split(r'\*', s) for s in filter_arr]
+            filter_components = np.unique(filter_components) 
+            self.slit = self.find_filter_comp(
+                filter_components,'slit', comp=slit)
+            self.grism = self.find_filter_comp(
+                filter_components,'grism',comp=grism)
+            self.list_sci = list(self.files_filtered(file='sci*', regex_match=True))
+            naxis1 = fits.getval(
+                os.path.join(self.location, self.list_sci[0]), 'naxis1')
+            naxis2 = fits.getval(
+                os.path.join(self.location, self.list_sci[0]), 'naxis2')
+            self.list_bias = list(self.files_filtered(file='bias*', naxis1=naxis1, naxis2=naxis2, regex_match=True))
+            self.list_flat = list(self.files_filtered(file='lampflat*', naxis1=naxis1, naxis2=naxis2, regex_match=True))
+            self.list_cal = list(self.files_filtered(file='cal*', regex_match=True))
+            self.list_allbutbias = self.list_flat + self.list_cal + self.list_sci
+            self.list_sci_cal = self.list_cal + self.list_sci
     
     def find_filter_comp(self, filter_components, comp_name, comp=None, comp_key=None):
         """
@@ -363,6 +382,13 @@ class FOSCFileCollection(ImageFileCollection):
             telescope = self.telescope
         if grism is None:
             grism = self.grism
+        grisms_ljt_naming = {
+            'grism3': 'G3', 
+            'grism8': 'G8', 
+            'grism10': 'G10', 
+            'grism14': 'G14'} 
+        if telescope == 'LJT' and grism in grisms_ljt_naming.keys():
+            grism = grisms_ljt_naming[grism]
         default_params = {
             'XLT_NewG4': {
                 'trimsec': '[51:1750,681:1350]', 
@@ -374,7 +400,18 @@ class FOSCFileCollection(ImageFileCollection):
                 'disp_axis': 1, 
                 'overscan': False
                 },
-            # Add more telescope-grism pairs and their parameters as needed
+            'LJT_G3': {
+                'trimsec': '[651:1350,2301:4130]',
+                'biassec': '[10:40,1:4612]',
+                'disp_axis': 0,
+                'overscan': True
+                },
+            'LJT_G14': {
+                'trimsec': '[751:1450,2280:4200]',
+                'biassec': '[10:40,1:4612]',
+                'disp_axis': 0,
+                'overscan': True
+                }
         }
         
         # Fetch the default parameters for the given telescope-grism pair
