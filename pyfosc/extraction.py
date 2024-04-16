@@ -94,27 +94,32 @@ class Extract1dSpec:
                 window=window,
                 guess=guess)
             trace_list.append(trace.trace.data)
-            bg_init = Background.two_sided(im, trace, separation=20, width=5)
-            im_bgs = im - bg_init
-            new_sum_pro = np.sum(im_bgs.data[:, int(im.data.shape[1]/3):2*int(im.data.shape[1]/3)], axis=1)
-            cent_pro = new_sum_pro[int(guess)-50:int(guess)+50] 
-            # fit a gaussian to the summed profile at the guessed location
-            g_init = models.Gaussian1D(amplitude=np.max(cent_pro), 
-                                       mean=50, stddev=3., bounds={'stddev': (1.5, 15)})
-            g_fitter = fitting.LMLSQFitter()
-            g_fitted = g_fitter(g_init, np.arange(len(cent_pro)), cent_pro)
-            std_pro = g_fitted.stddev.value
-            logger.info(
-                f'Fitting Gaussian to the central 100 pixels of the summed profile of {fname}: \n\t\t'
-                f'guess={guess:.2f}, std={std_pro:.2f}')
-            bg = Background.two_sided(im, trace, separation=1.4*std_pro, width=0.5*std_pro)
-            extract = HorneExtract(im-bg, trace)
-            sp = extract.spectrum
-            if np.min(sp.flux.value) < -1 * np.median(sp.flux.value) - 3*mad_std(sp.flux.value) and self.telescope == 'LJT':
-                logger.warning(
-                    f'{fname} has a minimum flux value: {np.min(sp.flux.value)} < median - 3 * mad_std.\n\t\t'
-                    f'Redoing background subtraction with larger separation and width.')
-                bg = Background.two_sided(im, trace, separation=30, width=12)
+            if self.telescope == "LJT":
+                bg_init = Background.two_sided(im, trace, separation=20, width=5)
+                im_bgs = im - bg_init
+                new_sum_pro = np.sum(im_bgs.data[:, int(im.data.shape[1]/3):2*int(im.data.shape[1]/3)], axis=1)
+                cent_pro = new_sum_pro[int(guess)-50:int(guess)+50] 
+                # fit a gaussian to the summed profile at the guessed location
+                g_init = models.Gaussian1D(
+                    amplitude=np.max(cent_pro), mean=50, stddev=3., bounds={'stddev': (1.5, 15)})
+                g_fitter = fitting.LMLSQFitter()
+                g_fitted = g_fitter(g_init, np.arange(len(cent_pro)), cent_pro)
+                std_pro = g_fitted.stddev.value
+                logger.info(
+                    f'Fitting Gaussian to the central 100 pixels of the summed profile of {fname}: \n\t\t'
+                    f'guess={guess:.2f}, std={std_pro:.2f}')
+                bg = Background.two_sided(im, trace, separation=1.4*std_pro, width=0.5*std_pro)
+                extract = HorneExtract(im-bg, trace)
+                sp = extract.spectrum
+                if np.min(sp.flux.value) < -1 * np.median(sp.flux.value) - 3*mad_std(sp.flux.value):
+                    logger.warning(
+                        f'{fname} has a minimum flux value: {np.min(sp.flux.value)} < median - 3 * mad_std.\n\t\t'
+                        f'Redoing background subtraction with larger separation and width.')
+                    bg = Background.two_sided(im, trace, separation=30, width=12)
+                    extract = HorneExtract(im-bg, trace)
+                    sp = extract.spectrum
+            elif self.telescope == "XLT":
+                bg = Background.one_sided(im, trace, separation=2, width=20)
                 extract = HorneExtract(im-bg, trace)
                 sp = extract.spectrum
             sp_hdr = im.header

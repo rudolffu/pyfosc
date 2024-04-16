@@ -33,6 +33,27 @@ elif teles == "HCT":
 else:
     print("Error detected.")
 
+# check if the following files exist, if true, delete them
+list_wa = glob.glob('wa*fits')
+list_cwa = glob.glob('cwa*fits')
+list_tel = glob.glob('*tel*fits')
+list_to_del = list_wa + list_cwa + list_tel
+list_to_del.append('std')
+list_to_del.append('sens.fits')
+list_to_del.append('con*.fits')
+list_to_del.append('calcon*fits')
+if len(list_wa) > 0 or len(list_cwa) > 0 or len(list_tel) > 0:
+    delete = input("Files that are wave/flux calibrated exist. Delete them? (y/n): ")
+    if delete == 'y':
+        for f in list_to_del:
+            try:
+                os.remove(f)
+            except FileNotFoundError:
+                pass
+    else:
+        print("Please rename or delete the files and run the script again.")
+        sys.exit(1)
+
 inputlist = glob.glob('a*fits')
 iraf.onedspec()
 print('Add refspectra to header...')
@@ -86,13 +107,4 @@ for obj in olist2:
                                      output='c' + obj,
                                      sensitivity='sens')
 
-# print('Copy to onedspec...')
-# iraf.twodspec.longslit.scopy.unlearn()
-# olist3 = glob.glob('cwac*fits')
-# for obj in olist3:
-#     objind = str(olist3.index(obj) + 1)
-#     objname = fits.getheader(obj)['OBJECT'] + \
-#         '_' + midname + objind + '_' + starname
-#     iraf.twodspec.longslit.scopy(input=obj, output=objname, bands=1,
-#                                  format='onedspec')
 print('---DONE---')
