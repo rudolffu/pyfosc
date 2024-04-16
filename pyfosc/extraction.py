@@ -1,3 +1,5 @@
+#!/usr/bin/env python
+# coding: utf-8
 import matplotlib.pyplot as plt
 from astropy.io import fits
 from astropy.table import vstack,Table
@@ -18,6 +20,7 @@ import ccdproc as ccdp
 from astropy.nddata import CCDData
 import astropy.units as u
 from astropy.modeling import models, fitting
+from astropy.stats import mad_std
 import specreduce
 from specreduce.tracing import FitTrace, ArrayTrace
 from specreduce.background import Background
@@ -26,9 +29,17 @@ from specutils import Spectrum1D, SpectrumCollection
 from astropy.stats import sigma_clip
 from specutils.manipulation import FluxConservingResampler, LinearInterpolatedResampler
 from PyAstronomy import pyasl
-
+from astropy.utils.exceptions import AstropyWarning
+from astropy.io.fits.verify import VerifyWarning
+from astropy.wcs import FITSFixedWarning
+import warnings
+warnings.simplefilter('ignore', category=AstropyWarning)
+warnings.simplefilter('ignore', category=UserWarning)
+import logging
 from .fosc import FOSCFileCollection,SpecImage
-
+from . import newlog as log
+logger = log.getLogger('pyfosc.extraction', level=logging.INFO)
+logger.propagate = False
 
 class Extract1dSpec:
     def __init__(self, ic_2dspec=None, filenames=None, data_dir=None, disp_axis=None,
@@ -45,12 +56,13 @@ class Extract1dSpec:
             else:
                 ic_2dspec = FOSCFileCollection(location='./', filenames=filenames)
         self.ic_2dspec = ic_2dspec
+        ic_2dspec.check_groups()
+        ic_2dspec.set_parameters()
+        self.telescope = ic_2dspec.telescope
         self.filenames = ic_2dspec.files
         self.data_dir = ic_2dspec.location
         if disp_axis is None:
-            im = SpecImage(
-                os.path.join(self.data_dir, self.filenames[0]), unit=u.electron)
-            disp_axis = np.argmax(im.data.shape)
+            disp_axis = ic_2dspec.parameters['disp_axis']
         self.disp_axis = disp_axis
         self.spatial_axis = 1 - disp_axis
         if qa_dir is None:
@@ -75,13 +87,6 @@ class Extract1dSpec:
                 guess = self.median_peak
             if abs(sum_pro.argmax()-guess)<=50:
                 guess = sum_pro.argmax()   
-            # get the central 100 pixels of the summed profile
-            cent_pro = sum_pro[int(guess)-50:int(guess)+50] 
-            # fit a gaussian to the summed profile at the guessed location
-            g_init = models.Gaussian1D(amplitude=np.max(cent_pro), mean=50, stddev=5.)
-            g_fitter = fitting.LMLSQFitter()
-            g_fitted = g_fitter(g_init, np.arange(len(cent_pro)), cent_pro)
-            std_pro = g_fitted.stddev.value
             trace = FitTrace(
                 im, 
                 bins=bins, 
@@ -89,10 +94,29 @@ class Extract1dSpec:
                 window=window,
                 guess=guess)
             trace_list.append(trace.trace.data)
-            bg = Background.two_sided(
-                im, trace, separation=2.8*std_pro, width=1*std_pro)
+            bg_init = Background.two_sided(im, trace, separation=20, width=5)
+            im_bgs = im - bg_init
+            new_sum_pro = np.sum(im_bgs.data[:, int(im.data.shape[1]/3):2*int(im.data.shape[1]/3)], axis=1)
+            cent_pro = new_sum_pro[int(guess)-50:int(guess)+50] 
+            # fit a gaussian to the summed profile at the guessed location
+            g_init = models.Gaussian1D(amplitude=np.max(cent_pro), 
+                                       mean=50, stddev=3., bounds={'stddev': (1.5, 15)})
+            g_fitter = fitting.LMLSQFitter()
+            g_fitted = g_fitter(g_init, np.arange(len(cent_pro)), cent_pro)
+            std_pro = g_fitted.stddev.value
+            logger.info(
+                f'Fitting Gaussian to the central 100 pixels of the summed profile of {fname}: \n\t\t'
+                f'guess={guess:.2f}, std={std_pro:.2f}')
+            bg = Background.two_sided(im, trace, separation=1.4*std_pro, width=0.5*std_pro)
             extract = HorneExtract(im-bg, trace)
             sp = extract.spectrum
+            if np.min(sp.flux.value) < -1 * np.median(sp.flux.value) - 3*mad_std(sp.flux.value) and self.telescope == 'LJT':
+                logger.warning(
+                    f'{fname} has a minimum flux value: {np.min(sp.flux.value)} < median - 3 * mad_std.\n\t\t'
+                    f'Redoing background subtraction with larger separation and width.')
+                bg = Background.two_sided(im, trace, separation=30, width=12)
+                extract = HorneExtract(im-bg, trace)
+                sp = extract.spectrum
             sp_hdr = im.header
             sp_hdr['CTYPE1'] = 'PIXEL'
             sp_hdr['CTYPE2'] = 'LINEAR'
@@ -109,6 +133,7 @@ class Extract1dSpec:
                 clobber=True)
             fig, axes = plt.subplots(nrows=2, figsize=(8, 8))
             im.plot_image(ax=axes[0])
+            # axes[0].imshow((im-bg).data, origin='lower', aspect='auto')
             axes[0].plot(trace.trace.data, 'r-')
             axes[0].set_title(f'trace of {fname}')
             ax1 = axes[1].get_subplotspec()
