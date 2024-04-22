@@ -17,21 +17,19 @@ import json
 from astropy.time import Time
 from ccdproc import ImageFileCollection
 import ccdproc as ccdp
-from astropy.nddata import CCDData
+from astropy.nddata import CCDData, nduncertainty
 import astropy.units as u
 from astropy.modeling import models, fitting
 from astropy.stats import mad_std
-import specreduce
+# import specreduce
 from specreduce.tracing import FitTrace, ArrayTrace
 from specreduce.background import Background
 from specreduce.extract import HorneExtract, BoxcarExtract
-from specutils import Spectrum1D, SpectrumCollection
+# from specutils import Spectrum1D, SpectrumCollection
 from astropy.stats import sigma_clip
-from specutils.manipulation import FluxConservingResampler, LinearInterpolatedResampler
+# from specutils.manipulation import FluxConservingResampler, LinearInterpolatedResampler
 from PyAstronomy import pyasl
 from astropy.utils.exceptions import AstropyWarning
-from astropy.io.fits.verify import VerifyWarning
-from astropy.wcs import FITSFixedWarning
 import warnings
 warnings.simplefilter('ignore', category=AstropyWarning)
 warnings.simplefilter('ignore', category=UserWarning)
@@ -75,7 +73,7 @@ class Extract1dSpec:
         median_peak = np.median(peak_list)
         self.median_peak = median_peak
         
-    def trace_and_extract(self, bins=200, peak_method='max', window=50, guess=None):
+    def trace_and_extract(self, bins=None, peak_method='max', window=50, guess=None):        
         trace_list = []    
         for i, (im, fname) in enumerate(self.ic_2dspec.ccds(return_fname=True)):
             im = SpecImage(im)
@@ -93,49 +91,82 @@ class Extract1dSpec:
                 peak_method=peak_method, 
                 window=window,
                 guess=guess)
+            g_cent = np.mean(trace.trace.data)
+            trace_upper = int(np.max(trace.trace.data)) + 5
+            trace_lower = int(np.min(trace.trace.data)) - 5
+            if isinstance(im.uncertainty, nduncertainty.StdDevUncertainty):
+                trace_uncertainty = im.uncertainty.array[trace_lower:trace_upper, :]
+            elif isinstance(im.uncertainty, nduncertainty.VarianceUncertainty):
+                im_stddev = np.sqrt(im.uncertainty.array)
+                trace_uncertainty = im_stddev[trace_lower:trace_upper, :]
+            elif isinstance(im.uncertainty, nduncertainty.InverseVariance):
+                im_stddev = np.sqrt(1/im.uncertainty.array)
+                trace_uncertainty = im_stddev[trace_lower:trace_upper, :]
+            trace_uncertainty_1d = np.sqrt(np.sum(trace_uncertainty**2, axis=0))
             trace_list.append(trace.trace.data)
             if self.telescope == "LJT":
-                bg_init = Background.two_sided(im, trace, separation=20, width=5)
-                im_bgs = im - bg_init
-                new_sum_pro = np.sum(im_bgs.data[:, int(im.data.shape[1]/3):2*int(im.data.shape[1]/3)], axis=1)
-                cent_pro = new_sum_pro[int(guess)-50:int(guess)+50] 
+                cent_pro = sum_pro[int(g_cent)-50:int(g_cent)+50] 
                 # fit a gaussian to the summed profile at the guessed location
                 g_init = models.Gaussian1D(
-                    amplitude=np.max(cent_pro), mean=50, stddev=3., bounds={'stddev': (1.5, 15)})
+                    amplitude=np.max(cent_pro), mean=50, stddev=3., bounds={'stddev': (1.5, 10)})
+                cbg_init = models.Const1D(amplitude=np.min(cent_pro))
                 g_fitter = fitting.LMLSQFitter()
-                g_fitted = g_fitter(g_init, np.arange(len(cent_pro)), cent_pro)
-                std_pro = g_fitted.stddev.value
+                gc_init = g_init + cbg_init
+                gc_fitted = g_fitter(gc_init, np.arange(len(cent_pro)), cent_pro)
+                std_pro = gc_fitted.stddev_0.value
+                # g_fitted = g_fitter(g_init, np.arange(len(cent_pro)), cent_pro)
+                # std_pro = g_fitted.stddev.value
                 logger.info(
                     f'Fitting Gaussian to the central 100 pixels of the summed profile of {fname}: \n\t\t'
-                    f'guess={guess:.2f}, std={std_pro:.2f}')
-                bg = Background.two_sided(im, trace, separation=1.4*std_pro, width=0.5*std_pro)
+                    f'center={g_cent:.2f}, std={std_pro:.2f}')
+                bg = Background.two_sided(im, trace, separation=10*std_pro, width=4*std_pro)
                 extract = HorneExtract(im-bg, trace)
                 sp = extract.spectrum
-                if np.min(sp.flux.value) < -1 * np.median(sp.flux.value) - 3*mad_std(sp.flux.value):
+                if np.min(sp.flux.value) < np.median(sp.flux.value) - 3 * mad_std(sp.flux.value):
                     logger.warning(
                         f'{fname} has a minimum flux value: {np.min(sp.flux.value)} < median - 3 * mad_std.\n\t\t'
                         f'Redoing background subtraction with larger separation and width.')
-                    bg = Background.two_sided(im, trace, separation=30, width=12)
+                    bg = Background.two_sided(im, trace, separation=12*std_pro, width=4*std_pro)
                     extract = HorneExtract(im-bg, trace)
                     sp = extract.spectrum
             elif self.telescope == "XLT":
                 bg = Background.one_sided(im, trace, separation=2, width=20)
                 extract = HorneExtract(im-bg, trace)
                 sp = extract.spectrum
-            sp_hdr = im.header
-            sp_hdr['CTYPE1'] = 'PIXEL'
-            sp_hdr['CTYPE2'] = 'LINEAR'
-            sp_hdr['CTYPE3'] = 'LINEAR'
+            multispecdata = fake_multispec_data(
+                (sp.flux.value, sp.flux.value, 
+                 bg.bkg_spectrum().flux.value, trace_uncertainty_1d))
+            sp_hdu = fits.PrimaryHDU(data=multispecdata)
+            hdrcopy = im.header.copy(strip = True)
+            sp_hdu.header.extend(hdrcopy, strip=True, update=True,
+                                 update_first=False, useblanks=True, bottom=False)
+            sp_hdr = sp_hdu.header
+            sp_hdr['NAXIS'] = 3
+            sp_hdr['NAXIS1'] = len(sp.flux)
+            sp_hdr['NAXIS2'] = 1
+            sp_hdr['NAXIS3'] = 4
+            sp_hdr['WCSDIM'] = 3
+            sp_hdr['WAT0_001'] = 'system=equispec'
+            sp_hdr['WAT1_001'] = 'wtype=linear label=Pixel'
+            sp_hdr['WAT2_001'] = 'wtype=linear'
             sp_hdr['CRVAL1'] = 1
             sp_hdr['CRPIX1'] = 1
             sp_hdr['CD1_1'] = 1
+            sp_hdr['CD2_2'] = 1
+            sp_hdr['CD3_3'] = 1
+            sp_hdr['LTM1_1'] = 1
+            sp_hdr['LTM2_2'] = 1
+            sp_hdr['LTM3_3'] = 1
             sp_hdr['WAT3_001'] = 'wtype=linear'
-            pyasl.write1dFitsSpec(
-                f'{self.data_dir}/a{fname}', 
-                flux=sp.flux.value, 
-                wvl=sp.spectral_axis.value, 
-                header=sp_hdr,
-                clobber=True)
+            sp_hdr['CTYPE1'] = 'PIXEL'
+            sp_hdr['CTYPE2'] = 'LINEAR'
+            sp_hdr['CTYPE3'] = 'LINEAR'
+            sp_hdr['BANDID1'] = 'spectrum - background fit, weights variance, clean no'               
+            sp_hdr['BANDID2'] = 'raw - background fit, weights none, clean no'                        
+            sp_hdr['BANDID3'] = 'background - background fit'                                         
+            sp_hdr['BANDID4'] = 'sigma - background fit, weights variance, clean no'  
+            sp_hdr['APNUM1'] = f'1 1 {trace.trace.data[0]:.2f} {trace.trace.data[-1]:.2f}'
+            sp_hdu.writeto(f'{self.data_dir}/a{fname}', overwrite=True)
             fig, axes = plt.subplots(nrows=2, figsize=(8, 8))
             im.plot_image(ax=axes[0])
             # axes[0].imshow((im-bg).data, origin='lower', aspect='auto')
@@ -184,3 +215,13 @@ class Extract1dSpec:
             sp.plot(axes=ax)
             ax.set_title(f'Extracted 1d spectrum of {fname}')
             plt.savefig(f'{self.qa_dir}/lamp1d_{fname}.pdf')
+            
+            
+def fake_multispec_data(arrlist):
+# https://github.com/jrthorstensen/opextract/blob/master/opextract.py#L337
+   # takes a list of 1-d numpy arrays, which are
+   # to be the 'bands' of a multispec, and stacks them
+   # into the format expected for a multispec.  As of now
+   # there can only be a single 'aperture'.
+
+   return np.expand_dims(np.array(arrlist), 1)

@@ -177,7 +177,12 @@ class FlatNormalizer:
             The degree of the Legendre1D polynomial fit. The default is 25. 
         """
         # check if disp_axis is 1 (horizontal). if 0, transpose the data
-        master_flat = self.master_flat
+        if hasattr(self, 'resp_corr_flat'):
+            if self.resp_corr_flat is not None:
+                print('Response corrected flat already exists. Returning the flat.')
+                self.resp_corr_flat.plot_image()
+                return self.resp_corr_flat
+        master_flat = self.master_flat.copy()
         if self.disp_axis == 0:
             master_flat.data = master_flat.data.T
             master_flat.uncertainty.array = master_flat.uncertainty.array.T

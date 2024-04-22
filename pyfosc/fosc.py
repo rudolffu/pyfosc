@@ -3,8 +3,10 @@
 import matplotlib.pyplot as plt
 from astropy.coordinates import SkyCoord, Angle, EarthLocation, AltAz
 from astropy.io import fits
+from astropy.io import registry
 from astropy.wcs import WCS
 from astropy.nddata import CCDData, NDDataArray
+from astropy.nddata.mixins.ndio import NDDataRead
 from astropy.table import vstack,Table
 from astropy.time import Time
 from astropy.stats import sigma_clip
@@ -31,6 +33,9 @@ import yaml
 
 class BasicCCDMixin():
     """A mixin class for CCDData objects"""
+    
+    read = registry.UnifiedReadWriteMethod(NDDataRead)
+    
     def plot_image(self, log_scale=False, use_wcs=False, cmap='viridis',
                    vmin=None, vmax=None, percentile_range=(1, 99), 
                    normalization=None, ax=None):
@@ -102,33 +107,31 @@ class SpecImage(BasicCCDMixin, CCDData):
         """
         Enhanced constructor to handle additional properties specific to spectral images.
         """
-        # If header is provided in kwd, move it to meta for compatibility with CCDData
-        if 'header' in kwd:
-            kwd['meta'] = kwd.pop('header')
-        # get the value of args
-        if len(args) == 1:
-            if isinstance(args[0], NDDataArray) or isinstance(args[0], np.ndarray):
-                super().__init__(*args, **kwd)
-            elif isinstance(args[0], str) or isinstance(args[0], Path):
-                super().__init__(CCDData.read(args[0], **kwd), **kwd)
+        if len(args) == 1 and (isinstance(args[0], str) or isinstance(args[0], Path)):
+            unit = kwd.get('unit', u.dimensionless_unscaled)
+            ccddata = super().read(args[0], unit=unit, **kwd)
+            super().__init__(ccddata, **kwd)
+            framename = os.path.basename(args[0])
+        else:
+            super().__init__(*args, **kwd)
         self._disp_axis = disp_axis
         self.framename = framename or (os.path.basename(kwd.get('filename')) if 'filename' in kwd else None)
         self.frametype = frametype or self.meta.get('OBSTYPE', None)
         
-    @classmethod
-    def read(cls, filename, fix=False, **kwd):
-        """
-        Reads a spectral image from a file and returns a SpecImage object.
-        """
-        if fix is True:
-            hdu = fits.open(filename, mode='update')
-            hdu[0].verify('fix')
-            hdu.flush()
-            hdu.close()
-        ccddata = super().read(filename, **kwd)
-        framename = os.path.basename(filename)
-        frametype = ccddata.meta.get('OBSTYPE', None)
-        return cls(ccddata, framename=framename, frametype=frametype, **kwd)
+    # @classmethod
+    # def read(cls, filename, fix=False, **kwd):
+    #     """
+    #     Reads a spectral image from a file and returns a SpecImage object.
+    #     """
+    #     if fix is True:
+    #         hdu = fits.open(filename, mode='update')
+    #         hdu[0].verify('fix')
+    #         hdu.flush()
+    #         hdu.close()
+    #     ccddata = super().read(filename, **kwd)
+    #     framename = os.path.basename(filename)
+    #     frametype = ccddata.meta.get('OBSTYPE', None)
+    #     return cls(ccddata, framename=framename, frametype=frametype, **kwd)
         
     @property
     def disp_axis(self):
@@ -408,6 +411,12 @@ class FOSCFileCollection(ImageFileCollection):
                 },
             'LJT_G14': {
                 'trimsec': '[751:1450,2280:4200]',
+                'biassec': '[10:40,1:4612]',
+                'disp_axis': 0,
+                'overscan': True
+                },
+            'LJT_G8': {
+                'trimsec': '[751:1450,1136:4150]',
                 'biassec': '[10:40,1:4612]',
                 'disp_axis': 0,
                 'overscan': True
