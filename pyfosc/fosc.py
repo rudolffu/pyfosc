@@ -358,11 +358,9 @@ class FOSCFileCollection(ImageFileCollection):
         elif len(comp_list) > 1:
             print(f'Multiple {comp_name}s found:')
             for i, comp in enumerate(comp_list):
-                print(f'{i+1}: {comp}')
-                comp_index = int(
-                    input(f'Enter the index of the {comp_name} '
-                          f'(enter {i+1} for {comp}, etc.): '))
-                comp = comp_list[comp_index-1]
+                print(f'Index = {i+1}, name = {comp}')
+            comp_index = int(input(f'Enter the index of the {comp_name}: '))
+            comp = comp_list[comp_index-1]
         else:
             print(f'No {comp_name} found. Please check the {comp_name} names.')
         return comp      

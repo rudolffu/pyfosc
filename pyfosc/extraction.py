@@ -73,7 +73,8 @@ class Extract1dSpec:
         median_peak = np.median(peak_list)
         self.median_peak = median_peak
         
-    def trace_and_extract(self, bins=None, peak_method='max', window=50, guess=None):        
+    def trace_and_extract(self, bins=None, peak_method='max', window=50, guess=None,
+                          sep_one_side=2, width_one_side=20):        
         trace_list = []    
         for i, (im, fname) in enumerate(self.ic_2dspec.ccds(return_fname=True)):
             im = SpecImage(im)
@@ -130,7 +131,7 @@ class Extract1dSpec:
                     extract = HorneExtract(im-bg, trace)
                     sp = extract.spectrum
             elif self.telescope == "XLT":
-                bg = Background.one_sided(im, trace, separation=2, width=20)
+                bg = Background.one_sided(im, trace, separation=sep_one_side, width=width_one_side)
                 extract = HorneExtract(im-bg, trace)
                 sp = extract.spectrum
             multispecdata = fake_multispec_data(
