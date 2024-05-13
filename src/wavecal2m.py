@@ -74,6 +74,7 @@ iraf.images.imutil()
 iraf.images.imutil.imheader(images="wacrf*fits")
 stdspec = str(raw_input("Enter filename of the standard star spectrum: "))
 starname = str(raw_input("Enter name of the standard star: "))
+starname = starname.lower()
 stdspec1 = stdspec.strip('.fits') + '.fits'
 
 stdlist = glob.glob(myonedstds + "/**/" + starname + ".dat")
