@@ -27,7 +27,9 @@ from specreduce.background import Background
 from specreduce.extract import HorneExtract, BoxcarExtract
 # from specutils import Spectrum1D, SpectrumCollection
 from astropy.stats import sigma_clip
-# from specutils.manipulation import FluxConservingResampler, LinearInterpolatedResampler
+from specutils.manipulation import FluxConservingResampler, LinearInterpolatedResampler
+from specutils import Spectrum1D
+from scipy.interpolate import interp1d
 from PyAstronomy import pyasl
 from astropy.utils.exceptions import AstropyWarning
 import warnings
@@ -134,6 +136,14 @@ class Extract1dSpec:
                 bg = Background.one_sided(im, trace, separation=sep_one_side, width=width_one_side)
                 extract = HorneExtract(im-bg, trace)
                 sp = extract.spectrum
+            if np.isnan(sp.flux.value).any():
+                # interpolate over NaNs
+                logger.warning(f'Interpolating over NaNs in {fname}')
+                flux_interp = interp1d(sp.spectral_axis.value[~np.isnan(sp.flux.value)],
+                                        sp.flux.value[~np.isnan(sp.flux.value)],
+                                        kind='linear', fill_value='extrapolate')
+                sp = Spectrum1D(flux=flux_interp(sp.spectral_axis.value) * sp.flux.unit,
+                                spectral_axis=sp.spectral_axis)
             multispecdata = fake_multispec_data(
                 (sp.flux.value, sp.flux.value, 
                  bg.bkg_spectrum().flux.value, trace_uncertainty_1d))
