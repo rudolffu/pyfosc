@@ -27,6 +27,18 @@ if [ ! -d "./raw" ]; then
 else
   printf "Directory \"raw\" already exists.\n"
 fi
+if [ ! -d "./data" ]; then
+  mkdir ./data
+  printf "Directory \"data\" is created.\n"
+else
+  printf "Directory \"data\" already exists.\n"
+fi
+if [ ! -d "./data/database" ]; then
+  mkdir ./data/database
+  printf "Directory \"data/database\" is created.\n"
+else
+  printf "Directory \"data/database\" already exists.\n"
+fi
 printf "============================================================\n"
 title="Please select the instrument with which you took the spectra."
 prompt="Enter number after the prompt:"
@@ -45,6 +57,7 @@ select opt in "${options[@]}" "Quit"; do
     # read -p "Enter the slit you have used (e.g. slit2.5):" slit
     read -p "Enter the Grism you have used (e.g. G4):" Grism
     render_template $BASEDIR/config/instrconfig.json.temp > ./myfosc.json
+    cp ./myfosc.json ./data/
     read -p "Do you want to copy the raw files to ./raw?[y/n]" yn
         case $yn in
           [Yy]* ) python $BASEDIR/src/list_back_2mdata.py; echo "Raw data is backuped and copied to ./raw."; exit;;
@@ -60,6 +73,7 @@ select opt in "${options[@]}" "Quit"; do
     read -p "Enter the slit you have used (e.g. slit2.5):" slit
     read -p "Enter the Grism you have used (e.g. G3):" Grism
     render_template $BASEDIR/config/instrconfig.json.temp > ./myfosc.json
+    cp ./myfosc.json ./data/
     read -p "Do you want to copy the raw files to ./raw?[y/n]" yn
         case $yn in
           [Yy]* ) python $BASEDIR/src/list_back_2mdata.py; echo "Raw data is backuped and copied to ./raw."; exit;;
@@ -75,6 +89,7 @@ select opt in "${options[@]}" "Quit"; do
     read -p "Enter the slit you have used (e.g. s167; s134):" slit
     read -p "Enter the Grism you have used (e.g. Gr7):" Grism
     render_template $BASEDIR/config/instrconfig.json.temp > ./myfosc.json
+    cp ./myfosc.json ./data/
     read -p "Do you want to copy the raw files to ./raw?[y/n]" yn
         case $yn in
           [Yy]* ) python $BASEDIR/src/list_back_2mdata.py; echo "Raw data is backuped and copied to ./raw."; exit;;

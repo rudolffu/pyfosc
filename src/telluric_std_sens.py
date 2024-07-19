@@ -68,15 +68,9 @@ cpsec = "["+str(pix1)+":"+str(pix2)+"]"
 iraf.images.imutil.imcopy.unlearn()
 iraf.images.imutil.imcopy(input=conname+cpsec, output="cal"+conname)
 
-olist3 = glob.glob('cwac*fits')
-for obj in olist3:
-    objind = str(olist3.index(obj) + 1)
-    objname = fits.getheader(obj)['OBJECT'] + \
-        '_' + midname + objind + '_' + starname + "_tel"
-    iraf.onedspec.telluric.unlearn()
-    iraf.onedspec.telluric(input=obj,
-                           output=objname,
-                           cal="cal"+conname,
-                           answer="YES")
-
-print('---DONE---')
+output_name = stdspec.strip('.fits') + '_tellcorr.fits'
+iraf.onedspec.telluric.unlearn()
+iraf.onedspec.telluric(input=stdspec,
+                       output=output_name,
+                       cal="cal"+conname,
+                       answer="YES")

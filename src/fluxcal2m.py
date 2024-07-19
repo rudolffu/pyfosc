@@ -34,16 +34,15 @@ else:
     print("Error detected.")
 
 # check if the following files exist, if true, delete them
-list_wa = glob.glob('wa*fits')
 list_cwa = glob.glob('cwa*fits')
-list_tel = glob.glob('*tel*fits')
-list_to_del = list_wa + list_cwa + list_tel
+list_tel = glob.glob('*tel.fits')
+list_to_del =  list_cwa + list_tel
 list_to_del.append('std')
 list_to_del.append('sens.fits')
 list_to_del.append('con*.fits')
 list_to_del.append('calcon*fits')
-if len(list_wa) > 0 or len(list_cwa) > 0 or len(list_tel) > 0:
-    delete = input("Files that are wave/flux calibrated exist. Delete them? (y/n): ")
+if len(list_cwa) > 0 or len(list_tel) > 0:
+    delete = input("Files that are flux calibrated exist. Delete them? (y/n): ")
     if delete == 'y':
         for f in list_to_del:
             try:
@@ -54,19 +53,6 @@ if len(list_wa) > 0 or len(list_cwa) > 0 or len(list_tel) > 0:
         print("Please rename or delete the files and run the script again.")
         sys.exit(1)
 
-inputlist = glob.glob('a*fits')
-iraf.onedspec()
-print('Add refspectra to header...')
-iraf.onedspec.refspectra.unlearn()
-for img in inputlist:
-    iraf.onedspec.refspectra(input=img, referen='af*fits',
-                             sort='', group='', time='no')
-
-print('Dispersion correction...')
-iraf.onedspec.dispcor.unlearn()
-for img in inputlist:
-    iraf.onedspec.dispcor(input=img, output='w' + img)
-
 olist1 = glob.glob('w*fits')
 print('Spectra after wavelength calibration:\n' + ", ".join(p for p in olist1))
 iraf.images()
@@ -74,7 +60,6 @@ iraf.images.imutil()
 iraf.images.imutil.imheader(images="wacrf*fits")
 stdspec = str(raw_input("Enter filename of the standard star spectrum: "))
 starname = str(raw_input("Enter name of the standard star: "))
-starname = starname.lower()
 stdspec1 = stdspec.strip('.fits') + '.fits'
 
 stdlist = glob.glob(myonedstds + "/**/" + starname + ".dat")

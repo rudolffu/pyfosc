@@ -56,21 +56,21 @@ elif teles == "LJT":
         hdu.flush()
         hdu.close()
     if Grism == "G3":
-        iraf.ccdred.ccdproc.biassec = '[2100:2148,2301:4130]'
+        iraf.ccdred.ccdproc.biassec = '[10:40,2301:4130]'
         iraf.ccdred.ccdproc.trimsec = '[651:1350,2301:4130]'
         # If you want more trimming on the blue side, use:
         # iraf.ccdred.ccdproc.biassec = '[10:40,2491:4130]'
         # iraf.ccdred.ccdproc.trimsec = '[751:1450,2491:4130]'
     elif Grism == "G8":
-        iraf.ccdred.ccdproc.biassec = '[2100:2148,1136:4250]'
+        iraf.ccdred.ccdproc.biassec = '[10:40,1136:4250]'
         iraf.ccdred.ccdproc.trimsec = '[751:1450,1136:4250]'
     elif Grism == "G10":
-        iraf.ccdred.ccdproc.biassec = '[2100:2148,2591:3340]'
+        iraf.ccdred.ccdproc.biassec = '[10:40,2591:3340]'
         iraf.ccdred.ccdproc.trimsec = '[751:1450,2591:3340]'
     elif Grism == "G14":
-        # iraf.ccdred.ccdproc.biassec = '[2100:2148,1901:4200]'
+        # iraf.ccdred.ccdproc.biassec = '[10:40,1901:4200]'
         # iraf.ccdred.ccdproc.trimsec = '[751:1450,1901:4200]'
-        iraf.ccdred.ccdproc.biassec = '[2100:2148,2280:4200]'
+        iraf.ccdred.ccdproc.biassec = '[10:40,2280:4200]'
         iraf.ccdred.ccdproc.trimsec = '[751:1450,2280:4200]' # new trimsec as of 2023-11-02
     iraf.ccdred.ccdproc(images='@flatnall.list', overscan='yes',
                         trim='yes', zerocor='yes', zero='Zero')
