@@ -62,15 +62,14 @@ If you are using a Mac with Apple Silicon (M1/M2), you can follow the instructio
 
 ### 1.3. Download PyFOSC and set environment variable for it.
 
-You can use `git clone` to download this package and checkout the `py3dev` branch:  
+You can use `git clone` to download this package:  
 ```bash
 git clone https://github.com/rudolffu/pyfosc.git
-cd pyfosc
-git checkout py3dev
 ```
 
 Now you can install the development version of `pyfosc` package with:
 ```sh
+cd pyfosc
 python -m pip install -e .
 ```
 
