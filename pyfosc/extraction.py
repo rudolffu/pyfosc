@@ -236,7 +236,7 @@ def fake_multispec_data(arrlist):
 class HorneExtract(specreduce.extract.HorneExtract):
     def __call__(self, image=None, trace_object=None,
                  disp_axis=None, crossdisp_axis=None,
-                 bkgrd_prof=None, spatial_profile=None,
+                 bkgrd_prof=None, spatial_profile='interpolated_profile',
                  n_bins_interpolated_profile=None,
                  interp_degree_interpolated_profile=None,
                  variance=None, mask=None, unit=None):
