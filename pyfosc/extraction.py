@@ -118,6 +118,17 @@ class Extract1dSpec:
                 extract = HorneExtract(im-bg, trace)
                 sp = extract.spectrum
                 sp_uncertainty = extract.sp_uncertainty
+                # check the residual of the background subtraction
+                im_res = im-bg
+                im_res_med = np.median(im_res.data)
+                logger.info(f'{fname} median residual of background subtraction: {im_res_med:.2f}')
+                if im_res_med < -1.0:
+                    logger.warning(
+                        f'{fname} background over-subtracted! The image might be saturated. \n\t\t'
+                        f'Turning off background subtraction for {fname}.')
+                    extract = BoxcarExtract(im, trace)
+                    sp = extract.spectrum
+                    sp_uncertainty = sp.flux.value * 0.1
                 if np.min(sp.flux.value) < np.median(sp.flux.value) - 3 * mad_std(sp.flux.value):
                     logger.warning(
                         f'{fname} has a minimum flux value: {np.min(sp.flux.value)} < median - 3 * mad_std.\n\t\t'
@@ -175,7 +186,7 @@ class Extract1dSpec:
             sp_hdu.writeto(f'{self.data_dir}/a{fname}', overwrite=True)
             fig, axes = plt.subplots(nrows=2, figsize=(8, 8))
             im.plot_image(ax=axes[0])
-            # axes[0].imshow((im-bg).data, origin='lower', aspect='auto')
+            # imres = axes[0].imshow((im-bg).data, origin='lower', aspect='auto')
             axes[0].plot(trace.trace.data, 'r-')
             axes[0].set_title(f'trace of {fname}')
             ax1 = axes[1].get_subplotspec()
@@ -183,6 +194,8 @@ class Extract1dSpec:
             axes[1] = fig.add_subplot(ax1, projection=sp.wcs)
             sp.plot(axes=axes[1])
             axes[1].set_title(f'Extracted 1d spectrum of {fname}')
+            # # add a colorbar to the right of the image
+            # cbar = fig.colorbar(imres, ax=axes[0], orientation='vertical')
             plt.savefig(f'{self.qa_dir}/trace_{fname}.pdf')
         self.trace_list = trace_list
         
