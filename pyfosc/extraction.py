@@ -78,8 +78,7 @@ class Extract1dSpec:
         median_peak = np.median(peak_list)
         self.median_peak = median_peak
         
-    def trace_and_extract(self, bins=None, peak_method='max', window=50, guess=None,
-                          sep_one_side=2, width_one_side=20):        
+    def trace_and_extract(self, bins=None, peak_method='max', window=50, guess=None):        
         trace_list = []    
         for i, (im, fname) in enumerate(self.ic_2dspec.ccds(return_fname=True)):
             im = SpecImage(im)
@@ -99,49 +98,41 @@ class Extract1dSpec:
                 guess=guess)
             g_cent = np.mean(trace.trace.data)
             trace_list.append(trace.trace.data)
-            if self.telescope == "LJT":
-                cent_pro = sum_pro[int(g_cent)-50:int(g_cent)+50] 
-                # fit a gaussian to the summed profile at the guessed location
-                g_init = models.Gaussian1D(
-                    amplitude=np.max(cent_pro), mean=50, stddev=3., bounds={'stddev': (1.5, 10)})
-                cbg_init = models.Const1D(amplitude=np.min(cent_pro))
-                g_fitter = fitting.LMLSQFitter()
-                gc_init = g_init + cbg_init
-                gc_fitted = g_fitter(gc_init, np.arange(len(cent_pro)), cent_pro)
-                std_pro = gc_fitted.stddev_0.value
-                # g_fitted = g_fitter(g_init, np.arange(len(cent_pro)), cent_pro)
-                # std_pro = g_fitted.stddev.value
-                logger.info(
-                    f'Fitting Gaussian to the central 100 pixels of the summed profile of {fname}: \n\t\t'
-                    f'center={g_cent:.2f}, std={std_pro:.2f}')
-                bg = Background.two_sided(im, trace, separation=10*std_pro, width=4*std_pro)
+            cent_pro = sum_pro[int(g_cent)-50:int(g_cent)+50] 
+            # fit a gaussian to the summed profile at the guessed location
+            g_init = models.Gaussian1D(
+                amplitude=np.max(cent_pro), mean=50, stddev=3., bounds={'stddev': (1.5, 10)})
+            cbg_init = models.Const1D(amplitude=np.min(cent_pro))
+            g_fitter = fitting.LMLSQFitter()
+            gc_init = g_init + cbg_init
+            gc_fitted = g_fitter(gc_init, np.arange(len(cent_pro)), cent_pro)
+            std_pro = gc_fitted.stddev_0.value
+            logger.info(
+                f'Fitting Gaussian to the central 100 pixels of the summed profile of {fname}: \n\t\t'
+                f'center={g_cent:.2f}, std={std_pro:.2f}')
+            bg = Background.two_sided(im, trace, separation=10*std_pro, width=4*std_pro)
+            extract = HorneExtract(im-bg, trace)
+            sp = extract.spectrum
+            sp_uncertainty = extract.sp_uncertainty
+            if np.min(sp.flux.value) < np.median(sp.flux.value) - 3 * mad_std(sp.flux.value):
+                logger.warning(
+                    f'{fname} has a minimum flux value: {np.min(sp.flux.value)} < median - 3 * mad_std.\n\t\t'
+                    f'Redoing background subtraction with larger separation and width.')
+                bg = Background.two_sided(im, trace, separation=12*std_pro, width=4*std_pro)
                 extract = HorneExtract(im-bg, trace)
                 sp = extract.spectrum
                 sp_uncertainty = extract.sp_uncertainty
-                # check the residual of the background subtraction
-                im_res = im-bg
-                im_res_med = np.median(im_res.data)
-                logger.info(f'{fname} median residual of background subtraction: {im_res_med:.2f}')
-                if im_res_med < -1.0:
-                    logger.warning(
-                        f'{fname} background over-subtracted! \n\t\t'
-                        f'Using BoxcarExtract for {fname}.')
-                    extract = BoxcarExtract(im-bg, trace)
-                    sp = extract.spectrum
-                    sp_uncertainty = sp.flux.value * 0.1
-                if np.min(sp.flux.value) < np.median(sp.flux.value) - 3 * mad_std(sp.flux.value):
-                    logger.warning(
-                        f'{fname} has a minimum flux value: {np.min(sp.flux.value)} < median - 3 * mad_std.\n\t\t'
-                        f'Redoing background subtraction with larger separation and width.')
-                    bg = Background.two_sided(im, trace, separation=12*std_pro, width=4*std_pro)
-                    extract = HorneExtract(im-bg, trace)
-                    sp = extract.spectrum
-                    sp_uncertainty = extract.sp_uncertainty
-            elif self.telescope == "XLT":
-                bg = Background.one_sided(im, trace, separation=sep_one_side, width=width_one_side)
-                extract = HorneExtract(im-bg, trace)
+            # check the residual of the background subtraction
+            im_res = im-bg
+            im_res_med = np.median(im_res.data)
+            logger.info(f'{fname} median residual of background subtraction: {im_res_med:.2f}')
+            if im_res_med < -2.0:
+                logger.warning(
+                    f'{fname} background over-subtracted! \n\t\t'
+                    f'Using BoxcarExtract for {fname}.')
+                extract = BoxcarExtract(im-bg, trace)
                 sp = extract.spectrum
-                sp_uncertainty = extract.sp_uncertainty
+                sp_uncertainty = sp.flux.value * 0.1
             if np.isnan(sp.flux.value).any():
                 # interpolate over NaNs
                 logger.warning(f'Interpolating over NaNs in {fname}')
