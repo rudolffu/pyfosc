@@ -124,9 +124,9 @@ class Extract1dSpec:
                 logger.info(f'{fname} median residual of background subtraction: {im_res_med:.2f}')
                 if im_res_med < -1.0:
                     logger.warning(
-                        f'{fname} background over-subtracted! The image might be saturated. \n\t\t'
-                        f'Turning off background subtraction for {fname}.')
-                    extract = BoxcarExtract(im, trace)
+                        f'{fname} background over-subtracted! \n\t\t'
+                        f'Using BoxcarExtract for {fname}.')
+                    extract = BoxcarExtract(im-bg, trace)
                     sp = extract.spectrum
                     sp_uncertainty = sp.flux.value * 0.1
                 if np.min(sp.flux.value) < np.median(sp.flux.value) - 3 * mad_std(sp.flux.value):
