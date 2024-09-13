@@ -23,12 +23,15 @@ with open('myfosc.json') as file:
 teles = settings['mysettings']['telescope']
 Grism = settings['mysettings']['Grism']
 slit = settings['mysettings']['slit']
+side = settings['mysettings']['side']
 if teles == "XLT":
     print("Settings for XLT will be used.")
 elif teles == "LJT":
     print("Settings for LJT will be used.")
 elif teles == "HCT":
     print("Settings for HCT will be used.")
+elif teles == "P200":
+    print("Settings for P200 will be used.")
 else:
     print("Error detected.")
 
@@ -36,6 +39,7 @@ else:
 def headertable(filename, telescope=None):
     basename = os.path.basename(filename)
     hdr = fits.getheader(filename)
+    del hdr['COMMENT']
     arr = np.asarray(hdr.cards).T
     tab = Table(data=arr[1], names=arr[0])
     if telescope=='XLT':
@@ -57,6 +61,12 @@ def headertable(filename, telescope=None):
                   'DATE-OBS','EXPTIME','GRISM',
                   'FILTER','FILENAME','TELESCOP',
                   'INSTRUME','OBSERVAT']
+    elif telescope=='P200':
+        tab.add_column(basename, name='FILENAME')
+        fields = ['OBJECT','RA','DEC','IMGTYPE',
+                  'UTSHUT','EXPTIME','DATE-OBS',
+                  'FILENAME', 'GRATING', 
+                  'GAIN','RON']
     return tab[fields]
 
 
@@ -64,7 +74,7 @@ def get_file_ext(filename):
     return os.path.splitext(filename)[1]
 
 
-def rename_raw(df, telescope=None):
+def rename_raw(df, telescope=None, side=side):
     if telescope=='XLT':
         num = df.FILENAME.str[8:12]
         ext = df.FILENAME.apply(get_file_ext)
@@ -74,12 +84,20 @@ def rename_raw(df, telescope=None):
     elif telescope=='HCT':
         num = df.FILENAME.str[3:8]
         ext = '.fits'
+    elif telescope=='P200':
+        ext = '.fits'
+        if side=='blue':
+            num = df.FILENAME.str[4:8]
+        elif side=='red':
+            num = df.FILENAME.str[3:7]
     df.OBJECT = df.OBJECT.str.replace('N/A','NULL')
     df.OBJECT = df.OBJECT.str.replace(' ','')
     objname = '_' + df.OBJECT.str[:10]
     objname = objname.str.replace('_NULL', '')
     if telescope=='HCT':
         obstype = df.IMAGETYP.str.lower()
+    elif telescope=='P200':
+        obstype = side[0]+df.IMGTYPE.str.lower()
     else:
         obstype = df.OBSTYPE.str.lower()
     newname = obstype + num + objname + ext
@@ -231,6 +249,65 @@ The value of DATE-OBS is unchanged.')
         self.airmass = co_altaz.secz.value
         self.update_field('AIRMASS', self.airmass)
     
+class DBSPfits():
+    def __init__(self, filename, site='Palomar', fix=True) -> None:
+        self.filename = filename
+        self.location = EarthLocation.of_site(site)
+        if fix==True:
+            hdu = fits.open(filename, mode='update')
+            hdu[0].verify('fix')
+            hdu.flush()
+            hdu.close()
+        hdr = fits.getheader(self.filename)
+        try:
+            if ':' in hdr['RA'] and ':' in hdr['DEC']:
+                coord = SkyCoord('{} {}'.format(hdr['RA'], hdr['DEC']),
+                                 unit=(u.hourangle, u.deg), frame='icrs')
+            else:
+                ra = float(hdr['RA'])
+                dec = float(hdr['DEC'])
+                coord = SkyCoord(ra=ra*u.deg, dec=dec*u.deg, frame='icrs')
+            self.coord = coord
+            self.ra = coord.ra.value
+            self.dec = coord.dec.value
+        except:
+            self.coord = None
+            self.ra = None
+            self.dec = None
+        self.hdr = hdr
+
+    def fixhdu(self):
+        filename = self.filename
+        hdu = fits.open(filename, mode='update')
+        hdu[0].verify('fix')
+        hdu.flush()
+        hdu.close()
+    
+    def update_field(self, field, value):
+        filename = self.filename
+        hdu = fits.open(filename, mode='update')
+        hdu[0].header[field] = value
+        hdu.flush()
+        hdu.close()
+
+    def update_dateobs(self):
+        hdr = self.hdr
+        date = hdr['UTSHUT']
+        isostr = date
+        self.update_field('DATE-OBS', isostr)
+        exptime = hdr['EXPTIME']
+        t_delta = datetime.timedelta(seconds=exptime/2)
+        datemid = datetime.datetime.fromisoformat(isostr) + t_delta
+        datemid = Time(datemid, location=self.location)
+        self.datemid = datemid
+        self.update_field('UTC-MID', datemid.isot)
+
+    def update_airmass(self):
+        co_altaz = self.coord.transform_to(AltAz(obstime=self.datemid,location=self.location))
+        self.co_altaz = co_altaz
+        self.airmass = co_altaz.secz.value
+        self.update_field('AIRMASS', self.airmass)
+
 
 if teles=='XLT':
     gain = 2.2                                                        
@@ -267,6 +344,24 @@ elif teles=='HCT':
         if 'IMAGETYP' not in hf.hdr.keys():
             hf.update_field('IMAGETYP', 'undefined')
         tablist.append(headertable(item, teles))
+elif teles=='P200':
+    if side=='blue':
+        flist = glob.glob('blue*.fits')
+    elif side=='red':
+        flist = glob.glob('red*.fits')
+    tablist = []
+    for item in flist:
+        dbs = DBSPfits(item)
+        if dbs.coord is not None:
+            dbs.update_dateobs()
+            dbs.update_airmass()
+        else:
+            dbs.update_field('RA', 0.0)
+            dbs.update_field('DEC', 0.0)
+        if 'OBJECT' not in dbs.hdr.keys():
+            dbs.update_field('IMGTYPE', 'undefined')
+        tablist.append(headertable(item, teles))
+        
 tb = vstack(tablist)
 tb.sort(['DATE-OBS'])
 df = tb.to_pandas()
@@ -319,64 +414,3 @@ if __name__ == '__main__':
     except FileNotFoundError:
         print('File not found. The files might '+
               'have been backed-up, otherwise a wrong location is provided.')
-
-# if teles=='XLT':
-#     try:
-#         list_std = glob.glob('speclfluxref*.fit')
-#     except:
-#         list_std = []
-#     list_bias = glob.glob('bias*.fit')
-#     list_obj = glob.glob('specltar*.fit')
-#     list_flat = glob.glob('speclflat*.fit')
-#     list_lamp = glob.glob('specllamp*.fit')
-#     list_obj.extend(list_std)
-#     list_flatnall = list_flat.copy()
-#     list_flatnall.extend(list_lamp)
-#     list_flatnall.extend(list_obj)
-#     list_specall = list_obj.copy()
-#     list_specall.extend(list_lamp)
-# elif teles=='LJT':
-#     list_bias = glob.glob('bias*.fits')
-#     list_obj = glob.glob('sci*.fits')
-#     list_flat = glob.glob('lampflat*.fits')
-#     list_lamp = glob.glob('cal*.fits')
-#     list_flatnall = list_flat.copy()
-#     list_flatnall.extend(list_lamp)
-#     list_flatnall.extend(list_obj)
-#     list_specall = list_obj.copy()
-#     list_specall.extend(list_lamp)
-# elif teles=='HCT':
-#     list_bias = glob.glob('bias*.fits')
-#     list_obj = glob.glob('object*.fits')
-#     list_flat = glob.glob('lampflat*.fits')
-#     list_lamp = glob.glob('cal*.fits')
-#     list_flatnall = list_flat.copy()
-#     list_flatnall.extend(list_lamp)
-#     list_flatnall.extend(list_obj)
-#     list_specall = list_obj.copy()
-#     list_specall.extend(list_lamp)
-
-
-# with open('zero.list', 'w') as f:
-#     for line in list_bias:
-#         f.write(f"{line}\n")
-
-# with open('flat.list', 'w') as f:
-#     for line in list_flat:
-#         f.write(f"{line}\n")
-
-# with open('objall.list', 'w') as f:
-#     for line in list_obj:
-#         f.write(f"{line}\n")
-
-# with open('lampall.list', 'w') as f:
-#     for line in list_lamp:
-#         f.write(f"{line}\n")
-
-# with open('flatnall.list', 'w') as f:
-#     for line in list_flatnall:
-#         f.write(f"{line}\n")
-
-# with open('specall.list', 'w') as f:
-#     for line in list_specall:
-#         f.write(f"{line}\n")

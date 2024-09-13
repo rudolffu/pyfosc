@@ -30,6 +30,11 @@ elif teles == "HCT":
     print("Settings for HCT will be used.")
     extinct = os.path.join(basepath, '../extinction/LJextinct.dat')
     midname = 'HCT'
+elif teles == "P200":
+    print("Settings for P200 will be used.")
+    side = settings['mysettings']['side']
+    extinct = 'onedstds$kpnoextinct.dat'
+    midname = 'P200' + side
 else:
     print("Error detected.")
 

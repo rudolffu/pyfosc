@@ -2,6 +2,7 @@
     \"mysettings\": {
         \"telescope\": \"$TELESCOPE\",
         \"slit\": \"$slit\",
-        \"Grism\": \"$Grism\"
+        \"Grism\": \"$Grism\",
+        \"side\": \"$side\"
     }
 }

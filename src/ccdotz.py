@@ -75,7 +75,7 @@ elif teles == "LJT":
     iraf.ccdred.ccdproc(images='@flatnall.list', overscan='yes',
                         trim='yes', zerocor='yes', zero='Zero')
 elif teles == "HCT":
-    iraf.ccdred.ccdproc.trimsec = '[26:250,101:2800]'
+    iraf.ccdred.ccdproc.trimsec = '[26:250,165:2800]'
     iraf.ccdred.ccdproc(images='@flatnall.list', overscan='no',
                         trim='yes', zerocor='yes', zero='Zero')
 else:

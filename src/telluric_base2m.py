@@ -24,6 +24,10 @@ elif teles == "LJT":
 elif teles == "HCT":
     print("Settings for HCT will be used.")
     midname = 'HCT'
+elif teles == "P200":
+    print("Settings for P200 will be used.")
+    side = settings['mysettings']['side']
+    midname = 'P200'+side
 else:
     print("Error detected.")
 
@@ -55,7 +59,7 @@ CRVAL1 = float(hdu[0].header['CRVAL1'])
 CD1_1 = float(hdu[0].header['CD1_1'])
 CRPIX1 = float(hdu[0].header['CRPIX1'])
 
-if teles == "LJT":
+if teles == "LJT" or teles == "P200":
     pix1=int((6750-CRVAL1)/CD1_1+CRPIX1-1)
     pix2=int((10000-CRVAL1)/CD1_1+CRPIX1-1)
 else:

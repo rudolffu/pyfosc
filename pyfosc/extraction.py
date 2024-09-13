@@ -98,10 +98,10 @@ class Extract1dSpec:
                 guess=guess)
             g_cent = np.mean(trace.trace.data)
             trace_list.append(trace.trace.data)
-            cent_pro = sum_pro[int(g_cent)-50:int(g_cent)+50] 
+            cent_pro = sum_pro[int(g_cent)-window:int(g_cent)+window] 
             # fit a gaussian to the summed profile at the guessed location
             g_init = models.Gaussian1D(
-                amplitude=np.max(cent_pro), mean=50, stddev=3., bounds={'stddev': (1.5, 10)})
+                amplitude=np.max(cent_pro), mean=window, stddev=3., bounds={'stddev': (1.5, 10)})
             cbg_init = models.Const1D(amplitude=np.min(cent_pro))
             g_fitter = fitting.LMLSQFitter()
             gc_init = g_init + cbg_init
@@ -210,6 +210,7 @@ class Extract1dSpec:
             extract = BoxcarExtract(im, trace)
             sp = extract.spectrum
             sp_hdr = im.header
+            del sp_hdr['COMMENT']
             sp_hdr['CTYPE1'] = 'PIXEL'
             sp_hdr['CRVAL1'] = 1
             sp_hdr['CRPIX1'] = 1

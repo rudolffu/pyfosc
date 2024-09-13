@@ -273,14 +273,22 @@ class FOSCFileCollection(ImageFileCollection):
         """
         tbs = self.table
         if telescope is None:
-            if 'Xinglong' in tbs['telescop'][0]:
-                telescope = 'XLT'
-            if '2m4' in tbs['telescop'][0]:
-                telescope = 'LJT'
-            if 'HCT' in tbs['telescop'][0]:
-                telescope = 'HCT'
+            if 'telescop' in tbs.columns:
+                telescope_str = tbs['telescop'][0]
+                if 'Xinglong' in telescope_str:
+                    telescope = 'XLT'
+                elif '2m4' in telescope_str:
+                    telescope = 'LJT'
+                elif 'HCT' in telescope_str:
+                    telescope = 'HCT'
+            elif 'telid' in tbs.columns:
+                telescope_str = tbs['telid'][0]
+                if telescope_str == '200':
+                    telescope = 'P200'
+                    self.grism = tbs['fpa'][0]
         self.telescope = telescope
-        filter_arr = np.unique(tbs['filter'].value.data)
+        if self.telescope != 'P200':
+            filter_arr = np.unique(tbs['filter'].value.data)
         if self.telescope == 'XLT':
             filter_components = [re.split(r'_|\*', s) for s in filter_arr]
             filter_components = np.unique(filter_components) 
@@ -316,6 +324,35 @@ class FOSCFileCollection(ImageFileCollection):
             self.list_bias = list(self.files_filtered(file='bias*', naxis1=naxis1, naxis2=naxis2, regex_match=True))
             self.list_flat = list(self.files_filtered(file='lampflat*', naxis1=naxis1, naxis2=naxis2, regex_match=True))
             self.list_cal = list(self.files_filtered(file='cal*', regex_match=True))
+            self.list_allbutbias = self.list_flat + self.list_cal + self.list_sci
+            self.list_sci_cal = self.list_cal + self.list_sci
+        elif self.telescope == 'HCT':
+            filter_arr = np.unique(tbs['grism'].value.data)
+            self.grism = self.find_filter_comp(
+                filter_arr, 'Grism', comp=grism)
+            self.slit = None
+            self.list_bias = list(self.files_filtered(file='bias*', regex_match=True))
+            if len(self.list_bias) > 0:
+                naxis1 = fits.getval(
+                    os.path.join(self.location, self.list_bias[0]), 'naxis1')
+                naxis2 = fits.getval(
+                    os.path.join(self.location, self.list_bias[0]), 'naxis2')
+                self.list_sci = list(self.files_filtered(file='object*', 
+                                                         naxis1=naxis1, 
+                                                         naxis2=naxis2, 
+                                                         regex_match=True))
+            else:
+                self.list_sci = list(self.files_filtered(file='object*', regex_match=True))
+            self.list_flat = list(self.files_filtered(file='lampflat*', regex_match=True))
+            self.list_cal = list(self.files_filtered(file='cal*', regex_match=True))
+            self.list_allbutbias = self.list_flat + self.list_cal + self.list_sci
+            self.list_sci_cal = self.list_cal + self.list_sci
+        elif self.telescope == 'P200':
+            self.slit = None
+            self.list_bias = list(self.files_filtered(file='(b|r)bias*', regex_match=True))
+            self.list_sci = list(self.files_filtered(file='(b|r)object*', regex_match=True))
+            self.list_flat = list(self.files_filtered(file='(b|r)flat*', regex_match=True))
+            self.list_cal = list(self.files_filtered(file='(b|r)cal*', regex_match=True))
             self.list_allbutbias = self.list_flat + self.list_cal + self.list_sci
             self.list_sci_cal = self.list_cal + self.list_sci
     
@@ -388,8 +425,13 @@ class FOSCFileCollection(ImageFileCollection):
             'grism8': 'G8', 
             'grism10': 'G10', 
             'grism14': 'G14'} 
+        grisms_hct_naming = {
+            '4 Grism 7': 'Gr7'
+        }
         if telescope == 'LJT' and grism in grisms_ljt_naming.keys():
             grism = grisms_ljt_naming[grism]
+        if telescope == 'HCT' and grism in grisms_hct_naming.keys():
+            grism = grisms_hct_naming[grism]
         default_params = {
             'XLT_NewG4': {
                 'trimsec': '[51:1750,681:1350]', 
@@ -418,7 +460,23 @@ class FOSCFileCollection(ImageFileCollection):
                 'biassec': '[10:40,1:4612]',
                 'disp_axis': 0,
                 'overscan': True
-                }
+                },
+            'HCT_Gr7': {
+                'trimsec': '[26:250,165:2800]',
+                'disp_axis': 0,
+                'overscan': False
+                },
+            'P200_DBSP_BLUE': {
+                'trimsec': '[101:380,240:2585]',
+                'biassec': '[420:460,1:2835]',
+                'disp_axis': 0,
+                'overscan': True
+                },
+            'P200_DBSP_RED2': {
+                'trimsec': '[751:3700,51:400]',
+                'disp_axis': 1,
+                'overscan': False
+            },
         }
         
         # Fetch the default parameters for the given telescope-grism pair

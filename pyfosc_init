@@ -42,7 +42,7 @@ fi
 printf "============================================================\n"
 title="Please select the instrument with which you took the spectra."
 prompt="Enter number after the prompt:"
-options=("BFOSC, Xinglong 2m16 telescope" "YFOSC, Lijiang 2m4 telescope" "HFOSC, HCT at IAO")
+options=("BFOSC, Xinglong 2m16 telescope" "YFOSC, Lijiang 2m4 telescope" "HFOSC, HCT at IAO" "DBSP, P200 at Palomar Observatory")
 
 echo "$title"
 PS3="$prompt "
@@ -60,7 +60,7 @@ select opt in "${options[@]}" "Quit"; do
     cp ./myfosc.json ./data/
     read -p "Do you want to copy the raw files to ./raw?[y/n]" yn
         case $yn in
-          [Yy]* ) python $BASEDIR/src/list_back_2mdata.py; echo "Raw data is backuped and copied to ./raw."; exit;;
+          [Yy]* ) python $BASEDIR/src/list_backup_data.py; echo "Raw data is backuped and copied to ./raw."; exit;;
           [Nn]* ) echo "Otherwise you have to do it yourself."; exit;;
           * ) echo "Please answer y or n.";;
         esac
@@ -76,7 +76,7 @@ select opt in "${options[@]}" "Quit"; do
     cp ./myfosc.json ./data/
     read -p "Do you want to copy the raw files to ./raw?[y/n]" yn
         case $yn in
-          [Yy]* ) python $BASEDIR/src/list_back_2mdata.py; echo "Raw data is backuped and copied to ./raw."; exit;;
+          [Yy]* ) python $BASEDIR/src/list_backup_data.py; echo "Raw data is backuped and copied to ./raw."; exit;;
           [Nn]* ) echo "Otherwise you have to do it yourself."; exit;;
           * ) echo "Please answer y or n.";;
         esac
@@ -92,13 +92,33 @@ select opt in "${options[@]}" "Quit"; do
     cp ./myfosc.json ./data/
     read -p "Do you want to copy the raw files to ./raw?[y/n]" yn
         case $yn in
-          [Yy]* ) python $BASEDIR/src/list_back_2mdata.py; echo "Raw data is backuped and copied to ./raw."; exit;;
+          [Yy]* ) python $BASEDIR/src/list_backup_data.py; echo "Raw data is backuped and copied to ./raw."; exit;;
           [Nn]* ) echo "Otherwise you have to do it yourself."; exit;;
           * ) echo "Please answer y or n.";;
         esac
     done
     break;;
     4 ) printf "============================================================\n"
+    TELESCOPE="P200"
+    echo "You picked $opt which is option $REPLY."
+    while true; do
+    read -p "Please choose the channel (blue [b] or red [r]) of the data you want to reduce. [b/r]:" br
+        case $br in
+          [Bb]* ) side="blue" ; echo "You picked blue channel.";;
+          [Rr]* ) side="red" ; echo "You picked red channel.";;
+          * ) echo "Please answer b or r.";;
+        esac
+    render_template $BASEDIR/config/instrconfig.json.temp > ./myfosc.json
+    cp ./myfosc.json ./data/
+    read -p "Do you want to copy the raw files to ./raw?[y/n]" yn
+        case $yn in
+          [Yy]* ) python $BASEDIR/src/list_backup_data.py; echo "Raw data is backuped and copied to ./raw."; exit;;
+          [Nn]* ) echo "Otherwise you have to do it yourself."; exit;;
+          * ) echo "Please answer y or n.";;
+        esac
+    done
+    break;;
+    5 ) printf "============================================================\n"
     echo "You picked $opt which is option $REPLY.";;
 
     $(( ${#options[@]}+1 )) ) echo "Goodbye!"; break;;
