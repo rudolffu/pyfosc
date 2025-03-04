@@ -39,7 +39,8 @@ else:
 def headertable(filename, telescope=None):
     basename = os.path.basename(filename)
     hdr = fits.getheader(filename)
-    del hdr['COMMENT']
+    if 'COMMENT' in hdr:
+        del hdr['COMMENT']
     arr = np.asarray(hdr.cards).T
     tab = Table(data=arr[1], names=arr[0])
     if telescope=='XLT':
@@ -64,7 +65,7 @@ def headertable(filename, telescope=None):
     elif telescope=='P200':
         tab.add_column(basename, name='FILENAME')
         fields = ['OBJECT','RA','DEC','IMGTYPE',
-                  'UTSHUT','EXPTIME','DATE-OBS',
+                  'UTSHUT','EXPTIME',
                   'FILENAME', 'GRATING', 
                   'GAIN','RON']
     return tab[fields]
@@ -86,10 +87,7 @@ def rename_raw(df, telescope=None, side=side):
         ext = '.fits'
     elif telescope=='P200':
         ext = '.fits'
-        if side=='blue':
-            num = df.FILENAME.str[4:8]
-        elif side=='red':
-            num = df.FILENAME.str[3:7]
+        num = df.FILENAME.str[-9:-5]
     df.OBJECT = df.OBJECT.str.replace('N/A','NULL')
     df.OBJECT = df.OBJECT.str.replace(' ','')
     objname = '_' + df.OBJECT.str[:10]
@@ -294,7 +292,7 @@ class DBSPfits():
         hdr = self.hdr
         date = hdr['UTSHUT']
         isostr = date
-        self.update_field('DATE-OBS', isostr)
+        # self.update_field('DATE-OBS', isostr)
         exptime = hdr['EXPTIME']
         t_delta = datetime.timedelta(seconds=exptime/2)
         datemid = datetime.datetime.fromisoformat(isostr) + t_delta
@@ -363,7 +361,8 @@ elif teles=='P200':
         tablist.append(headertable(item, teles))
         
 tb = vstack(tablist)
-tb.sort(['DATE-OBS'])
+if 'DATE-OBS' in tb.colnames:
+    tb.sort(['DATE-OBS'])
 df = tb.to_pandas()
 # df.query('OBSTYPE=="BIAS"')
 
