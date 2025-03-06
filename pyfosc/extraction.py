@@ -210,7 +210,8 @@ class Extract1dSpec:
             extract = BoxcarExtract(im, trace)
             sp = extract.spectrum
             sp_hdr = im.header
-            del sp_hdr['COMMENT']
+            if 'COMMENT' in sp_hdr:
+                del sp_hdr['COMMENT']
             sp_hdr['CTYPE1'] = 'PIXEL'
             sp_hdr['CRVAL1'] = 1
             sp_hdr['CRPIX1'] = 1
