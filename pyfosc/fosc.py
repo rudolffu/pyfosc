@@ -444,7 +444,8 @@ class FOSCFileCollection(ImageFileCollection):
                 'overscan': False
                 },
             'LJT_G3': {
-                'trimsec': '[651:1350,2301:4130]',
+                # 'trimsec': '[651:1350,2301:4130]',
+                'trimsec': '[201:1400,2301:4130]',
                 'biassec': '[10:40,1:4612]',
                 'disp_axis': 0,
                 'overscan': True
