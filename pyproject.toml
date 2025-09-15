@@ -1,0 +1,50 @@
+[build-system]
+requires = [
+  "setuptools>=61",
+  "wheel"
+]
+build-backend = "setuptools.build_meta"
+
+# Minimum supported Python
+[project]
+requires-python = ">=3.9"
+name = "pyfosc"
+version = "2.0.0-alpha"
+description = "A pipeline toolbox for long-slit spectroscopy data reduction written in Python."
+readme = {file = "README.md", content-type = "text/markdown"}
+authors = [{ name = "Yuming Fu", email = "fuympku@outlook.com" }]
+license = { file = "COPYRIGHT" }
+dependencies = [
+  "astropy",
+  "ccdproc",
+  "specutils",
+  "specreduce"
+]
+classifiers = [
+  "Programming Language :: Python :: 3",
+  "License :: OSI Approved :: GNU GENERAL PUBLIC LICENSE V3",
+  "Operating System :: OS Independent"
+]
+
+[project.optional-dependencies]
+gui = [
+  "pyqtgraph",
+  "pyqt5"
+]
+
+[project.urls]
+Homepage = "https://github.com/rudolffu/pyfosc"
+Repository = "https://github.com/rudolffu/pyfosc"
+
+# Optional tooling configuration
+[tool.black]
+line-length = 88
+target-version = ["py39", "py310", "py311"]
+
+[tool.isort]
+profile = "black"
+line_length = 88
+known_first_party = ["pyfosc"]
+
+[tool.setuptools]
+packages = { find = {} }
