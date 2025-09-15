@@ -131,15 +131,10 @@ def _write_ipynb(path: Path, cells: list[dict]) -> None:
     path.write_text(json.dumps(nb, indent=2))
 
 
-def cmd_notebook(argv: list[str] | None = None) -> int:
-    parser = argparse.ArgumentParser(prog="pyfosc notebook", description="Generate Jupyter notebook templates")
-    parser.add_argument("name", choices=["prewavecal"])  # extend as more notebooks are added
-    parser.add_argument("--cwd", default=os.getcwd())
-    parser.add_argument("--open", action="store_true", dest="open_nb")
-    args = parser.parse_args(argv)
-    base = Path(args.cwd).resolve()
+def cmd_notebook(name: str = "prewavecal", cwd: str | None = None, open_nb: bool = False) -> int:
+    base = Path(cwd or os.getcwd()).resolve()
     base.mkdir(parents=True, exist_ok=True)
-    if args.name == "prewavecal":
+    if name == "prewavecal":
         nb_path = base / "pyfosc_prewavecal.ipynb"
         cells = [
             {"cell_type": "markdown", "metadata": {}, "source": [
@@ -161,7 +156,7 @@ def cmd_notebook(argv: list[str] | None = None) -> int:
         ]
         _write_ipynb(nb_path, cells)
         print(f"Wrote {nb_path}")
-        if args.open_nb:
+        if open_nb:
             try:
                 subprocess.run([sys.executable, "-m", "jupyter", "notebook", str(nb_path)], check=False)
             except Exception as exc:
@@ -176,7 +171,7 @@ def main(argv: list[str] | None = None) -> int:
     subparsers.add_parser("init", help="Initialize a working directory for pyfosc")
     subparsers.add_parser("run", help="Run the standard reduction pipeline")
     nb = subparsers.add_parser("notebook", help="Generate a runnable Jupyter notebook for a step")
-    nb.add_argument("name", choices=["prewavecal"], help="Notebook template to generate")
+    nb.add_argument("--name", choices=["prewavecal"], default="prewavecal", help="Notebook template to generate")
     nb.add_argument("--cwd", default=os.getcwd(), help="Directory where to create the notebook")
     nb.add_argument("--open", action="store_true", dest="open_nb", help="Open notebook with Jupyter after creation")
 
@@ -186,7 +181,7 @@ def main(argv: list[str] | None = None) -> int:
     elif args.cmd == "run":
         return cmd_run(rest)
     elif args.cmd == "notebook":
-        return cmd_notebook(rest)
+        return cmd_notebook(name=args.name, cwd=args.cwd, open_nb=args.open_nb)
     else:
         parser.print_help()
         return 0
