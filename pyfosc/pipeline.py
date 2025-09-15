@@ -82,13 +82,20 @@ class PreWaveCal:
     def calibrate_bias_and_trim(self) -> None:
         assert self.master_bias is not None and self.ic_all is not None
         params = self.params
+        # Prepare a reference bias with same processing as the science frames
+        bias_ref = self.master_bias
+        if params.overscan and params.biassec:
+            bias_ref = ccdp.subtract_overscan(bias_ref, fits_section=params.biassec, overscan_axis=1)
+        if params.trimsec:
+            bias_ref = ccdp.trim_image(bias_ref, fits_section=params.trimsec)
+
         ic = ImageFileCollection(location=str(self.data_dir), filenames=self.ic_all.list_allbutbias)
         for ccd, fname in ic.ccds(return_fname=True, ccd_kwargs={'unit': 'adu'}):
             if params.overscan and params.biassec:
                 ccd = ccdp.subtract_overscan(ccd, fits_section=params.biassec, overscan_axis=1)
             if params.trimsec:
                 ccd = ccdp.trim_image(ccd, fits_section=params.trimsec)
-            ccd = ccdp.subtract_bias(ccd, self.master_bias)
+            ccd = ccdp.subtract_bias(ccd, bias_ref)
             ccd.header['SUBTRACT_BIAS'] = 'subbias'
             if params.trimsec:
                 ccd.header['TRIMSEC'] = params.trimsec
