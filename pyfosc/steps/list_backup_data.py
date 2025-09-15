@@ -308,16 +308,18 @@ class DBSPfits():
 
 
 if teles=='XLT':
-    gain = 2.2                                                        
+    gain = 2.2
     ron = 7.8
-    flist = glob.glob('*fit')
+    # Include both .fit and .fits just in case
+    flist = sorted(set(glob.glob('*.fit') + glob.glob('*.fits')))
     tablist = []
     for item in flist:
         mod_header(item, field='gain', value=gain)
         mod_header(item, field='rdnoise', value=ron)
         tablist.append(headertable(item, teles))
 elif teles=='LJT':
-    flist = glob.glob('lj*fits')
+    # Be permissive on file prefix; rely on header filtering later
+    flist = sorted(glob.glob('*.fits'))
     tablist = []
     for item in flist:
         tablist.append(headertable(item, teles))

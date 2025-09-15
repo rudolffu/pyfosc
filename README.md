@@ -21,7 +21,6 @@ pandas
 ccdproc
 specutils
 specreduce
-PyAstronomy
 ```
 
 `pandas` is already included in the Anaconda distribution. To install `ccdproc` with `conda`, you can use:
@@ -46,8 +45,6 @@ pip install specutils
 ```sh
 pip install git+https://github.com/astropy/specreduce.git
 ```
-
-`PyAstronomy` is currently used to write IRAF format 1d spectra. See [PyAstronomy](https://pyastronomy.readthedocs.io/en/latest/pyaCDoc/installingPyA.html) for installation instructions.
 
 This package depends on [IRAF](http://iraf.noao.edu/) and [PyRAF](http://www.stsci.edu/institute/software_hardware/pyraf). You can download and install the [IRAF Community Distribution](https://iraf-community.github.io/).
 

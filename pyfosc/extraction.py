@@ -17,7 +17,7 @@ import json
 from astropy.time import Time
 from ccdproc import ImageFileCollection
 import ccdproc as ccdp
-from astropy.nddata import CCDData, nduncertainty
+from astropy.nddata import CCDData, nduncertainty, StdDevUncertainty
 import astropy.units as u
 from astropy.modeling import models, fitting
 from astropy.stats import mad_std
@@ -81,6 +81,9 @@ class Extract1dSpec:
         trace_list = []    
         for i, (im, fname) in enumerate(self.ic_2dspec.ccds(return_fname=True)):
             im = SpecImage(im)
+            # Ensure an uncertainty exists; fallback to sqrt(abs(data)) if missing
+            if getattr(im, 'uncertainty', None) is None:
+                im.uncertainty = StdDevUncertainty(np.sqrt(np.clip(np.abs(im.data), 0, None)))
             if self.disp_axis == 0:
                 im.data = im.data.T
                 im.uncertainty.array = im.uncertainty.array.T
