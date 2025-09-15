@@ -10,9 +10,22 @@
 ## Build, Test, and Development Commands
 - Create env: `python -m venv .venv && source .venv/bin/activate && pip install -U pip`.
 - Install in editable mode: `pip install -e .` or with GUI extras: `pip install -e .[gui]`.
-- Run initializer: `bash ./pyfosc_init` (creates `raw/`, `data/`, and `myfosc.json`).
-- Run pipeline: `bash ./pyfosc_run.sh` (executes scripts in `src/` in order). Run individual steps with `python src/<step>.py`.
+- CLI (installed): `pyfosc init` (creates `raw/`, `data/`, `myfosc.json`) and `pyfosc run` (executes standard pipeline).
+- Legacy (repo): `bash ./pyfosc_init` and `bash ./pyfosc_run.sh` remain usable from the repo root.
 - Build distribution (optional): `python setup.py sdist bdist_wheel`.
+
+## Command-Line Usage
+- `pyfosc init --telescope LJT --slit slit2.5 --grism G3 --copy-raw`
+- `pyfosc run` (uses new ccdproc/astropy pre-wavecal + IRAF wavecal).
+- `pyfosc notebook prewavecal` to scaffold a runnable Jupyter notebook.
+- To locate reference data, set `PYFOSC_DATA_DIR` to a repo checkout containing `database/`, `extinction/`, and `iraf_data/` if not packaged.
+
+## Python API (Notebook-Friendly)
+- Import: `from pyfosc.pipeline import PreWaveCal`.
+- Typical flow:
+  - `pw = PreWaveCal('.')`; `pw.discover()`; `pw.build_master_bias()`; `pw.calibrate_bias_and_trim()`;
+  - `pw.build_master_flat()`; `pw.normalize_flat()`; `pw.apply_flat_correction()`;
+  - `pw.cosmic_ray_clean()`; `pw.extract_1d()`.
 
 ## Coding Style & Naming Conventions
 - Python 3.9+; follow PEP 8 with 4‑space indents and 88–100 char lines.

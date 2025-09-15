@@ -18,7 +18,8 @@ dependencies = [
   "astropy",
   "ccdproc",
   "specutils",
-  "specreduce"
+  "specreduce",
+  "packaging"
 ]
 classifiers = [
   "Programming Language :: Python :: 3",
@@ -36,6 +37,11 @@ gui = [
 Homepage = "https://github.com/rudolffu/pyfosc"
 Repository = "https://github.com/rudolffu/pyfosc"
 
+[project.scripts]
+pyfosc = "pyfosc.cli:main"
+pyfosc-init = "pyfosc.cli:cmd_init"
+pyfosc-run = "pyfosc.cli:cmd_run"
+
 # Optional tooling configuration
 [tool.black]
 line-length = 88
@@ -48,3 +54,8 @@ known_first_party = ["pyfosc"]
 
 [tool.setuptools]
 packages = { find = {} }
+
+[tool.setuptools.package-data]
+pyfosc = [
+  # If you later move resource folders under pyfosc/, include them here.
+]
