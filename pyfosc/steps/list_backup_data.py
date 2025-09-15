@@ -238,4 +238,178 @@ The value of DATE-OBS is unchanged.')
         t_delta = datetime.timedelta(seconds=exptime/2)
         datemid = datetime.datetime.fromisoformat(isostr) + t_delta
         datemid = Time(datemid, location=self.location)
+        self.datemid = datemid
+        self.update_field('UTC-MID', datemid.isot)
 
+    def update_airmass(self):
+        co_altaz = self.coord.transform_to(AltAz(obstime=self.datemid,location=self.location))
+        self.co_altaz = co_altaz
+        self.airmass = co_altaz.secz.value
+        self.update_field('AIRMASS', self.airmass)
+
+class DBSPfits():
+    def __init__(self, filename, site='Palomar', fix=True) -> None:
+        self.filename = filename
+        self.location = EarthLocation.of_site(site)
+        if fix==True:
+            hdu = fits.open(filename, mode='update')
+            hdu[0].verify('fix')
+            hdu.flush()
+            hdu.close()
+        hdr = fits.getheader(self.filename)
+        try:
+            if ':' in hdr['RA'] and ':' in hdr['DEC']:
+                coord = SkyCoord('{} {}'.format(hdr['RA'], hdr['DEC']),
+                                 unit=(u.hourangle, u.deg), frame='icrs')
+            else:
+                ra = float(hdr['RA'])
+                dec = float(hdr['DEC'])
+                coord = SkyCoord(ra=ra*u.deg, dec=dec*u.deg, frame='icrs')
+            self.coord = coord
+            self.ra = coord.ra.value
+            self.dec = coord.dec.value
+        except:
+            self.coord = None
+            self.ra = None
+            self.dec = None
+        self.hdr = hdr
+
+    def fixhdu(self):
+        filename = self.filename
+        hdu = fits.open(filename, mode='update')
+        hdu[0].verify('fix')
+        hdu.flush()
+        hdu.close()
+    
+    def update_field(self, field, value):
+        filename = self.filename
+        hdu = fits.open(filename, mode='update')
+        hdu[0].header[field] = value
+        hdu.flush()
+        hdu.close()
+
+    def update_dateobs(self):
+        hdr = self.hdr
+        date = hdr['UTSHUT']
+        isostr = date
+        # self.update_field('DATE-OBS', isostr)
+        exptime = hdr['EXPTIME']
+        t_delta = datetime.timedelta(seconds=exptime/2)
+        datemid = datetime.datetime.fromisoformat(isostr) + t_delta
+        datemid = Time(datemid, location=self.location)
+        self.datemid = datemid
+        self.update_field('UTC-MID', datemid.isot)
+
+    def update_airmass(self):
+        co_altaz = self.coord.transform_to(AltAz(obstime=self.datemid,location=self.location))
+        self.co_altaz = co_altaz
+        self.airmass = co_altaz.secz.value
+        self.update_field('AIRMASS', self.airmass)
+
+
+if teles=='XLT':
+    gain = 2.2                                                        
+    ron = 7.8
+    flist = glob.glob('*fit')
+    tablist = []
+    for item in flist:
+        mod_header(item, field='gain', value=gain)
+        mod_header(item, field='rdnoise', value=ron)
+        tablist.append(headertable(item, teles))
+elif teles=='LJT':
+    flist = glob.glob('lj*fits')
+    tablist = []
+    for item in flist:
+        tablist.append(headertable(item, teles))
+elif teles=='HCT':
+    gain = 1.22                                                        
+    ron = 4.8
+    print("Now printing files in the current directory......")
+    print(os.listdir('./'))
+    filename_prefix = str(input("Enter prefix of the HCT spectra, e.g.'af': "))
+    flist = glob.glob(filename_prefix+'*')
+    tablist = []
+    for item in flist:
+        hf = HCTfits(item)
+        hf.update_field('gain', gain)
+        hf.update_field('rdnoise', ron)
+        if hf.coord is not None:
+            hf.update_dateobs()
+            hf.update_airmass()
+        else:
+            hf.update_field('RA', 0.0)
+            hf.update_field('DEC', 0.0)
+        if 'IMAGETYP' not in hf.hdr.keys():
+            hf.update_field('IMAGETYP', 'undefined')
+        tablist.append(headertable(item, teles))
+elif teles=='P200':
+    if side=='blue':
+        flist = glob.glob('blue*.fits')
+    elif side=='red':
+        flist = glob.glob('red*.fits')
+    tablist = []
+    for item in flist:
+        dbs = DBSPfits(item)
+        if dbs.coord is not None:
+            dbs.update_dateobs()
+            dbs.update_airmass()
+        else:
+            dbs.update_field('RA', 0.0)
+            dbs.update_field('DEC', 0.0)
+        if 'OBJECT' not in dbs.hdr.keys():
+            dbs.update_field('IMGTYPE', 'undefined')
+        tablist.append(headertable(item, teles))
+        
+tb = vstack(tablist)
+if 'DATE-OBS' in tb.colnames:
+    tb.sort(['DATE-OBS'])
+df = tb.to_pandas()
+# df.query('OBSTYPE=="BIAS"')
+
+
+grisms_ljt = {'G3': 'grism3', 
+              'G8': 'grism8', 
+              'G10': 'grism10', 
+              'G14': 'grism14'} 
+slits_ljt = {'slit1.8': 'lslit1_81', 
+             'slit2.5': 'lslit2_51', 
+             'slit5.0': 'lslit5_05'} 
+if teles=='LJT':
+    key_grism = grisms_ljt.pop(Grism)
+    key_slit = slits_ljt.pop(slit)
+    for grism_item in list(grisms_ljt.values()):
+        tb = tb[tb['FILTER3']!=grism_item]
+    for slit_item in list(slits_ljt.values()):
+        tb = tb[tb['FILTER1']!=slit_item]
+    df = tb.to_pandas()
+    df.loc[df.FILTER.str.contains('lamp_neon_helium'),'OBSTYPE'] = 'CAL'
+    df.loc[df.FILTER.str.contains('lamp_fe_argon'),'OBSTYPE'] = 'CAL'
+    df.OBSTYPE = df.OBSTYPE.str.replace('EXPERIMENTAL', 'EXPOSE')
+    df.loc[
+        (df.FILTER.str.contains('grism')) & (df.FILTER.str.contains('slit'))
+        & (~df.FILTER.str.contains('lamp_neon_helium'))
+        & (~df.FILTER.str.contains('lamp_fe_argon')), 'OBSTYPE'] = 'SCI'
+    df.loc[df.FILTER.str.contains('lamp_halogen'), 'OBSTYPE'] = 'LAMPFLAT'
+elif teles=='HCT':
+    df['OBJECT_low'] = df.OBJECT.str.lower()
+    df.loc[(df.IMAGETYP.str.contains('lamp') 
+            & (~df.OBJECT_low.str.contains('halogen'))),'IMAGETYP'] = 'CAL'
+    df.loc[df.OBJECT_low.str.contains('halogen'), 'IMAGETYP'] = 'LAMPFLAT'
+
+
+imglist = df.FILENAME
+newname = rename_raw(df, teles)
+df['newname'] = newname
+
+df.to_csv('imglist.csv', index=False)
+
+if __name__ == '__main__':
+    try:
+        # pool = mp.Pool(mp.cpu_count())
+        # pool.starmap(backup_raw, zip(imglist, newname))
+        for img, newname in zip(imglist, newname):
+            backup_raw(img, newname)
+        print('Copying raw files finished.')
+    except FileNotFoundError:
+        print('File not found. The files might '+
+              'have been backed-up, otherwise a wrong location is provided.')
