@@ -30,7 +30,6 @@ from astropy.stats import sigma_clip
 from specutils.manipulation import FluxConservingResampler, LinearInterpolatedResampler
 from specutils import Spectrum1D
 from scipy.interpolate import interp1d
-from PyAstronomy import pyasl
 from astropy.utils.exceptions import AstropyWarning
 from specreduce.core import SpecreduceOperation
 from specreduce.tracing import Trace, FlatTrace
@@ -216,12 +215,12 @@ class Extract1dSpec:
             sp_hdr['CRVAL1'] = 1
             sp_hdr['CRPIX1'] = 1
             sp_hdr['CD1_1'] = 1
-            pyasl.write1dFitsSpec(
+            write_1d_fits_spec(
                 f'{self.data_dir}/a{fname}', 
                 flux=sp.flux.value, 
                 wvl=sp.spectral_axis.value, 
                 header=sp_hdr,
-                clobber=True)
+                overwrite=True)
             fig, ax = plt.subplots(figsize=(8, 4),
                                 subplot_kw={'projection': sp.wcs})
             sp.plot(axes=ax)
@@ -237,6 +236,40 @@ def fake_multispec_data(arrlist):
    # there can only be a single 'aperture'.
 
    return np.expand_dims(np.array(arrlist), 1)
+
+
+def write_1d_fits_spec(filename, flux, wvl=None, header=None, overwrite=True):
+    """
+    Write a simple 1D spectrum FITS compatible with IRAF onedspec tools.
+
+    Parameters
+    ----------
+    filename : str
+        Output FITS path.
+    flux : array-like
+        1D flux array.
+    wvl : array-like, optional
+        1D wavelength array (currently unused; output uses pixel WCS).
+    header : astropy.io.fits.Header, optional
+        Header to merge into the output.
+    overwrite : bool, default True
+        Overwrite existing file.
+    """
+    data = np.asarray(flux, dtype=np.float32)
+    hdu = fits.PrimaryHDU(data=data)
+    if header is not None:
+        # Merge provided header (strip/comments handled upstream)
+        hdu.header.extend(header, strip=True, update=True)
+    # Ensure minimal pixel WCS keywords exist for IRAF onedspec
+    h = hdu.header
+    h.setdefault('NAXIS', 1)
+    h['NAXIS1'] = data.shape[0]
+    h.setdefault('CTYPE1', 'PIXEL')
+    h.setdefault('CRVAL1', 1.0)
+    h.setdefault('CRPIX1', 1.0)
+    if 'CD1_1' not in h and 'CDELT1' not in h:
+        h['CD1_1'] = 1.0
+    hdu.writeto(filename, overwrite=overwrite)
 
 
 class HorneExtract(specreduce.extract.HorneExtract):
