@@ -25,10 +25,6 @@ specreduce
 
 `pandas` is already included in the Anaconda distribution. To install `ccdproc` with `conda`, you can use:
 ```sh
-conda install astropy::ccdproc
-```
-or
-```sh
 conda install conda-forge::ccdproc
 ```
 
@@ -57,40 +53,44 @@ For detailed description on how to install IRAF and PyRAF, visit:
 
 If you are using a Mac with Apple Silicon (M1/M2), you can follow the instructions in [this blog post](https://yumingfu.space/tech/2024-iraf-mac-installation/) to install IRAF/PyRAF.
 
-### 1.3. Download PyFOSC and set environment variable for it.
+### 1.3. Install PyFOSC
 
-You can use `git clone` to download this package:  
+Clone and install in editable mode:
 ```bash
 git clone https://github.com/rudolffu/pyfosc.git
-```
-
-Now you can install the development version of `pyfosc` package with:
-```sh
 cd pyfosc
-python -m pip install -e .
+python -m pip install -e .[gui]
 ```
-
-In order to run PyFOSC commands in the terminal, you need to add the path of PyFOSC and its sub-directory `src` to $PATH, by editing `~/.bashrc` (Linux, e.g., Ubuntu) or `~/.bash_profile` (Mac OS version before Catalina) or `~/.zshrc` (Mac OS Catalina and later versions). An example of this can be:
-```Bash
-export PATH=/Your/Path/to/pyfosc:$PATH
-export PATH=/Your/Path/to/pyfosc/src:$PATH
-```
+No environment variable changes are required. The `pyfosc` command is installed automatically.
 
 ## 2. Usage
 
 **New documentation under development!**
 
-### 2.1. Preparation: Run `pyfosc_init` to begin
+### 2.1. Quick start (CLI)
 
-First go to the working directory which contains FOSC spectroscopic data.
-Run `pyfosc_init` from the terminal:
+From a working directory containing your FITS files:
+```bash
+# Initialize project layout and config, and optionally copy/rename raws
+pyfosc init --telescope XLT --slit slit2.3 --grism G4 --copy-raw
+
+# Run reductions: pre-wavecal (ccdproc/astropy) + wavecal/telluric (IRAF)
+pyfosc run
 ```
-pyfosc_init
-```
+Notes:
+- Raw files are backed up under `raw/` and renamed copies placed in `data/`.
+- Intermediate products (bias/trim `_bc`, `f*`, `crf*`) are written under `data/`.
+- Master frames are saved under `MasterFrames/` at the repository root.
 
 ### 2.2. Running the pipeline (currently in a python + pyraf hybrid mode)
 
-#### 2.2.1. Basic reduction with a new script/jupyter notebook (to be uploaded)
+#### 2.2.1. Optional: Jupyter workflow
+
+Generate a starter notebook for the pre-wavecal steps:
+```bash
+pyfosc notebook --name prewavecal --cwd ./
+```
+Run cells to perform bias/trim, flat/normalization, flat correction, CR cleaning, and 1D extraction.
 
 The basic reduction steps include:
 - Bias construction and subtraction, and CCD trimming
@@ -98,11 +98,9 @@ The basic reduction steps include:
 - Cosmic ray removal
 - Tracing and extraction of 1d spectra
 
-#### 2.2.2. Go to the `data` directory and run the command-line scripts 
+#### 2.2.2. Wave/flux/telluric (IRAF)
 
-```
-cd data
-```
+These steps are run by `pyfosc run`. To execute manually, run from the `data/` directory:
 
 The remaining steps include:
 - Wavelength calibration
@@ -112,17 +110,17 @@ The remaining steps include:
 These steps can be done with the following scripts:
 
 ```bash
-reidentlamp2m.py  # Reidentify lamp spectra with previously stored ones.
-#Can use identlamp2m.py instead to identify lamp by oneself.
-wavecal2m.py      # Do wavelength calibration, flux calibration.
-telluric_base2m.py # Telluric correction and one-d spectra extraction.
+python -m pyfosc.steps.reidentlamp2m   # Reidentify lamp spectra with stored references
+# or: python -m pyfosc.steps.identlamp2m  # Identify lamps manually
+python -m pyfosc.steps.wavecal2m       # Wavelength + flux calibration
+python -m pyfosc.steps.telluric_base2m # Telluric correction and 1D spectra
 ```
 
 ## 3. Credits
 
 This software uses BSD 3-Clause License.  
 
-Copyright (c) 2019-2024, Yuming Fu  
+Copyright (c) 2019-2025, Yuming Fu  
 All rights reserved.  
 
 This software contains sources from third-party softwares.  
