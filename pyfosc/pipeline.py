@@ -43,7 +43,8 @@ class PipelineParams:
 class PreWaveCal:
     def __init__(self, work_dir: str | Path = '.'):
         self.work_dir = Path(work_dir)
-        self.data_dir = self.work_dir
+        # Work with renamed data under ./data by convention
+        self.data_dir = self.work_dir / 'data'
         self.settings = self._load_settings(self.work_dir / 'myfosc.json')
         self.params = PipelineParams()
         self.ic_all: Optional[FOSCFileCollection] = None
@@ -58,6 +59,8 @@ class PreWaveCal:
 
     def discover(self) -> None:
         ic = FOSCFileCollection(location=str(self.data_dir))
+        if ic.summary is None:
+            raise FileNotFoundError(f"No FITS files found under {self.data_dir}. Ensure backup step populated ./data.")
         ic.check_groups()
         ic.set_parameters()
         self.ic_all = ic
@@ -149,4 +152,3 @@ class PreWaveCal:
             aout = Path('a' + lf)
             if aout.exists():
                 aout.rename(Path('af' + lf[1:]))
-
