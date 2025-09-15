@@ -16,9 +16,8 @@
 
 ## Command-Line Usage
 - `pyfosc init --telescope LJT --slit slit2.5 --grism G3 --copy-raw`
-- `pyfosc run` (uses new ccdproc/astropy pre-wavecal + IRAF wavecal).
-- `pyfosc notebook prewavecal` to scaffold a runnable Jupyter notebook.
-- To locate reference data, set `PYFOSC_DATA_DIR` to a repo checkout containing `database/`, `extinction/`, and `iraf_data/` if not packaged.
+- `pyfosc run` (new ccdproc/astropy pre-wavecal + IRAF wavecal).
+- `pyfosc notebook --name prewavecal` to scaffold a runnable notebook.
 
 ## Python API (Notebook-Friendly)
 - Import: `from pyfosc.pipeline import PreWaveCal`.
@@ -26,6 +25,17 @@
   - `pw = PreWaveCal('.')`; `pw.discover()`; `pw.build_master_bias()`; `pw.calibrate_bias_and_trim()`;
   - `pw.build_master_flat()`; `pw.normalize_flat()`; `pw.apply_flat_correction()`;
   - `pw.cosmic_ray_clean()`; `pw.extract_1d()`.
+  - Optional: `pw.extract_1d(guess=<row_index>)` to seed trace.
+
+## Important Session Notes
+- Idempotent pipeline: re-runs skip already-processed files using filename patterns and FITS headers (`SUBTRACT_BIAS`, `TRIMSEC`, `FLAT_CORRECT`).
+- Output locations: intermediates under `data/` (bias+trim as `<name>_bc`, flat-correct as `f<name>`, CR-clean as `crf<name>`); master frames under `MasterFrames/`.
+- File resolution: avoid double prefixes (e.g., `crfcrf…`) by resolving existing filenames on disk before processing.
+- Uncertainty handling: CR-cleaned images are saved with a unitless `StdDevUncertainty`; extraction ensures uncertainty exists if missing.
+- Gain/readnoise: prefer values from FITS headers (aliases: `GAIN`, `RDNOISE`/`RON`), falling back to instrument defaults only if absent.
+- Extraction inputs: use `FOSCFileCollection` (not `ImageFileCollection`) to enable `check_groups`/`set_parameters`.
+- list_backup_data: module-complete; renames, backs up to `raw/`, copies to `data/`, writes `imglist.csv`.
+- CLI fixes: `pyfosc-init` JSON building via `json.dumps`; `pyfosc notebook` now accepts `--name` with default.
 
 ## Coding Style & Naming Conventions
 - Python 3.9+; follow PEP 8 with 4‑space indents and 88–100 char lines.
