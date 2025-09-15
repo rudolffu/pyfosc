@@ -6,15 +6,7 @@ from pathlib import Path
 import subprocess
 
 
-TEMPLATE = """{
-    \"mysettings\": {
-        \"telescope\": \"{TELESCOPE}\",
-        \"slit\": \"{slit}\",
-        \"Grism\": \"{Grism}\",
-        \"side\": \"{side}\"
-    }
-}
-"""
+TEMPLATE = None  # no longer used; JSON is built via dict to avoid brace-format issues
 
 
 def _ensure_dirs(base: Path) -> None:
@@ -24,11 +16,21 @@ def _ensure_dirs(base: Path) -> None:
 
 
 def _write_config(base: Path, telescope: str, slit: str, grism: str, side: str) -> Path:
-    cfg_text = TEMPLATE.format(TELESCOPE=telescope, slit=slit, Grism=grism, side=side)
+    cfg = {
+        "mysettings": {
+            "telescope": telescope,
+            "slit": slit,
+            "Grism": grism,
+            "side": side,
+        }
+    }
+    cfg_text = json.dumps(cfg, indent=2)
     cfg_path = base / "myfosc.json"
     cfg_path.write_text(cfg_text)
     # also copy to data/
-    (base / "data" / "myfosc.json").write_text(cfg_text)
+    data_dir = base / "data"
+    data_dir.mkdir(exist_ok=True)
+    (data_dir / "myfosc.json").write_text(cfg_text)
     return cfg_path
 
 
