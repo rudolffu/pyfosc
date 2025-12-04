@@ -100,7 +100,7 @@ def cmd_run(argv: list[str] | None = None) -> int:
         # New ccdproc/astropy-based pre-wavecal pipeline
         "pyfosc.steps.prewavecal",
         # Existing IRAF-based wave calibration and telluric correction
-        "pyfosc.steps.reidentlamp2m",
+        "pyfosc.steps.identlamp2m",
         "pyfosc.steps.wavecal2m",
         "pyfosc.steps.telluric_base2m",
     ]

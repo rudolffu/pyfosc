@@ -111,8 +111,8 @@ These steps can be done with the following scripts:
 
 ```bash
 cd data/ # Go to data directory
-python -m pyfosc.steps.reidentlamp2m   # Reidentify lamp spectra with stored references
-# or: python -m pyfosc.steps.identlamp2m  # Identify lamps manually
+python -m pyfosc.steps.identlamp2m    # Identify lamps manually (default; works without packaged refs)
+# python -m pyfosc.steps.reidentlamp2m # Reidentify lamp spectra with stored references
 python -m pyfosc.steps.wavecal2m       # Wavelength + flux calibration
 python -m pyfosc.steps.telluric_base2m # Telluric correction and 1D spectra
 ```
