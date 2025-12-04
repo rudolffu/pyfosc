@@ -59,7 +59,7 @@ Clone and install in editable mode:
 ```bash
 git clone https://github.com/rudolffu/pyfosc.git
 cd pyfosc
-python -m pip install -e .[gui]
+python -m pip install -e .
 ```
 No environment variable changes are required. The `pyfosc` command is installed automatically.
 
@@ -110,6 +110,7 @@ The remaining steps include:
 These steps can be done with the following scripts:
 
 ```bash
+cd data/ # Go to data directory
 python -m pyfosc.steps.reidentlamp2m   # Reidentify lamp spectra with stored references
 # or: python -m pyfosc.steps.identlamp2m  # Identify lamps manually
 python -m pyfosc.steps.wavecal2m       # Wavelength + flux calibration
