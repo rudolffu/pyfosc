@@ -6,6 +6,7 @@ import json
 import sys
 import os
 import platform
+from pathlib import Path
 from packaging import version
 if version.parse(platform.python_version()) < version.parse("3.0.0"):
     print("Using raw_input")
@@ -33,10 +34,10 @@ else:
 
 iraf.images()
 iraf.images.imutil()
-iraf.images.imutil.imheader(images="wacrf*fits")
+iraf.images.imutil.imheader(images="wacrf*.fit*")
 
-list_con = glob.glob('*con*fits')
-list_tel = glob.glob('*tel*fits')
+list_con = glob.glob('*con*.fit*')
+list_tel = glob.glob('*tel*.fit*')
 list_con.extend(list_tel)
 if len(list_con) > 0:
     for f in list_con:
@@ -44,8 +45,10 @@ if len(list_con) > 0:
 
 stdspec = str(raw_input("Enter filename of the standard star spectrum: "))
 starname = str(raw_input("Enter name of the standard star: "))
-stdspec1 = stdspec.strip('.fits') + '.fits'
-conname = "con"+starname+".fits"
+stdspec_path = Path(stdspec)
+stdspec1 = stdspec_path.name if stdspec_path.suffix else stdspec_path.with_suffix('.fits').name
+suffix = stdspec_path.suffix or '.fits'
+conname = f"con{starname}{suffix}"
 settings['stdstarname'] = starname
 with open('myfosc.json', 'w') as f:
     json.dump(settings,f)
@@ -72,7 +75,7 @@ cpsec = "["+str(pix1)+":"+str(pix2)+"]"
 iraf.images.imutil.imcopy.unlearn()
 iraf.images.imutil.imcopy(input=conname+cpsec, output="cal"+conname)
 
-olist3 = glob.glob('cwac*fits')
+olist3 = glob.glob('cwac*.fit*')
 for obj in olist3:
     objind = str(olist3.index(obj) + 1)
     objname = fits.getheader(obj)['OBJECT'] + \
@@ -84,4 +87,3 @@ for obj in olist3:
                            answer="YES")
 
 print('---DONE---')
-

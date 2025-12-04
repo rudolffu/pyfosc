@@ -45,7 +45,7 @@ if teles == "XLT":
                         trim='yes', zerocor='yes', zero='Zero')
 elif teles == "LJT":
     print("Settings for LJT will be used.")
-    flist = glob("*fits")
+    flist = glob("*.fit*")
     for f in flist:
         hdu = fits.open(f,mode='update')
         hdr = hdu[0].header
@@ -82,4 +82,3 @@ else:
     print("Error detected.")
 
 print('--- DONE ---')
-
