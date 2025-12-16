@@ -7,6 +7,7 @@ import sys
 import os
 import platform
 from packaging import version
+from pyfosc.fits_headers import print_fits_keyword_table
 if version.parse(platform.python_version()) < version.parse("3.0.0"):
     print("Using raw_input")
 else:
@@ -29,7 +30,7 @@ else:
 
 iraf.images()
 iraf.images.imutil()
-iraf.images.imutil.imheader(images="wacrf*fits")
+print_fits_keyword_table(glob.glob("wacrf*fits"), keyword="OBJECT")
 
 list_con = glob.glob('*con*fits')
 list_tel = glob.glob('*tel*fits')

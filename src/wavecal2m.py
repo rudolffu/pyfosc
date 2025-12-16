@@ -7,6 +7,7 @@ import sys
 import os
 import platform
 from packaging import version
+from pyfosc.fits_headers import print_fits_keyword_table
 if version.parse(platform.python_version()) < version.parse("3.0.0"):
     print("Using raw_input")
 else:
@@ -76,7 +77,7 @@ olist1 = glob.glob('w*fits')
 print('Spectra after wavelength calibration:\n' + ", ".join(p for p in olist1))
 iraf.images()
 iraf.images.imutil()
-iraf.images.imutil.imheader(images="wacrf*fits")
+print_fits_keyword_table(glob.glob("wacrf*fits"), keyword="OBJECT")
 stdspec = str(raw_input("Enter filename of the standard star spectrum: "))
 starname = str(raw_input("Enter name of the standard star: "))
 starname = starname.lower()

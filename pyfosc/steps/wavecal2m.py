@@ -1,13 +1,13 @@
 #!/usr/bin/env python
 import glob
 from pyraf import iraf
-from astropy.io import fits
 import json
 import sys
 import os
 import platform
 from pathlib import Path
 from packaging import version
+from pyfosc.fits_headers import print_fits_keyword_table
 from pyfosc.paths import find_data_root
 if version.parse(platform.python_version()) < version.parse("3.0.0"):
     print("Using raw_input")
@@ -75,9 +75,7 @@ for img in inputlist:
 
 olist1 = glob.glob('w*.fit*')
 print('Spectra after wavelength calibration:\n' + ", ".join(p for p in olist1))
-iraf.images()
-iraf.images.imutil()
-iraf.images.imutil.imheader(images="wacrf*.fit*")
+print_fits_keyword_table(glob.glob("wacrf*.fit*"), keyword="OBJECT")
 stdspec = str(raw_input("Enter filename of the standard star spectrum: "))
 starname = str(raw_input("Enter name of the standard star: "))
 starname = starname.lower()

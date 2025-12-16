@@ -10,6 +10,7 @@ import shutil
 import re
 import platform
 from packaging import version
+from pyfosc.fits_headers import print_fits_keyword_table
 if version.parse(platform.python_version()) < version.parse("3.0.0"):
     print("Using raw_input")
 else:
@@ -41,7 +42,7 @@ try:
 except:
     iraf.images()
     iraf.images.imutil()
-    iraf.images.imutil.imheader(images="wacrf*fits")
+    print_fits_keyword_table(glob.glob("wacrf*fits"), keyword="OBJECT")
     stdspec = str(raw_input("Enter filename of the standard star spectrum: "))
     starname = str(raw_input("Enter name of the standard star: "))
     settings['stdstarname'] = starname
