@@ -316,14 +316,42 @@ class FOSCFileCollection(ImageFileCollection):
                 filter_components,'slit', comp=slit)
             self.grism = self.find_filter_comp(
                 filter_components,'grism',comp=grism)
-            self.list_sci = list(self.files_filtered(file='sci*', regex_match=True))
+            # Re-runs leave suffix-based products alongside base inputs. Do
+            # not let a trimmed ``*_bc`` product define the raw-frame shape.
+            def base_files(items):
+                return [name for name in items if not Path(str(name)).stem.endswith('_bc')]
+
+            self.list_sci = base_files(
+                self.files_filtered(file='sci*', regex_match=True)
+            )
+            if not self.list_sci:
+                # Extraction collections intentionally contain only products
+                # such as crfsci..._bc.fits. They still need instrument and
+                # dispersion parameters, but no raw calibration grouping.
+                self.list_sci = list(self.files)
+                self.list_bias = []
+                self.list_flat = []
+                self.list_cal = []
+                self.list_allbutbias = self.list_sci
+                self.list_sci_cal = self.list_sci
+                return
             naxis1 = fits.getval(
                 os.path.join(self.location, self.list_sci[0]), 'naxis1')
             naxis2 = fits.getval(
                 os.path.join(self.location, self.list_sci[0]), 'naxis2')
-            self.list_bias = list(self.files_filtered(file='bias*', naxis1=naxis1, naxis2=naxis2, regex_match=True))
-            self.list_flat = list(self.files_filtered(file='lampflat*', naxis1=naxis1, naxis2=naxis2, regex_match=True))
-            self.list_cal = list(self.files_filtered(file='cal*', regex_match=True))
+            self.list_bias = base_files(
+                self.files_filtered(
+                    file='bias*', naxis1=naxis1, naxis2=naxis2, regex_match=True
+                )
+            )
+            self.list_flat = base_files(
+                self.files_filtered(
+                    file='lampflat*', naxis1=naxis1, naxis2=naxis2, regex_match=True
+                )
+            )
+            self.list_cal = base_files(
+                self.files_filtered(file='cal*', regex_match=True)
+            )
             self.list_allbutbias = self.list_flat + self.list_cal + self.list_sci
             self.list_sci_cal = self.list_cal + self.list_sci
         elif self.telescope == 'HCT':
@@ -444,8 +472,9 @@ class FOSCFileCollection(ImageFileCollection):
                 'overscan': False
                 },
             'LJT_G3': {
-                # 'trimsec': '[651:1350,2301:4130]',
-                'trimsec': '[201:1400,2301:4130]',
+                # Established full-frame LJT/G3 reduction geometry. Wider
+                # sections can be selected with myfosc.json["prewavecal"].
+                'trimsec': '[651:1350,2301:4130]',
                 'biassec': '[10:40,1:4612]',
                 'disp_axis': 0,
                 'overscan': True

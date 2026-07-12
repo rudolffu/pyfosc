@@ -104,7 +104,8 @@ def rename_raw(df, telescope=None, side=side):
 
 def backup_raw(img, newname):
     raw_dir = './raw'
-    data_dir = './data'
+    staged = settings.get('layout', {}).get('mode') == 'staged'
+    data_dir = './input' if staged else './data'
     Path(raw_dir).mkdir(exist_ok=True)
     Path(data_dir).mkdir(exist_ok=True)
     shutil.copy(img, data_dir + '/' + newname)
@@ -411,6 +412,25 @@ if __name__ == '__main__':
         # pool.starmap(backup_raw, zip(imglist, newname))
         for img, newname in zip(imglist, newname):
             backup_raw(img, newname)
+        if settings.get('layout', {}).get('mode') == 'staged':
+            from pyfosc.project import build_manifest
+
+            original_map = {
+                str(canonical): str(original)
+                for original, canonical in zip(imglist, newname)
+            }
+            manifest = build_manifest(Path('.'), settings, original_map)
+            science_groups = [
+                name for name, group in manifest['groups'].items()
+                if group.get('science', 0)
+            ]
+            settings['layout']['active_group'] = (
+                science_groups[0] if len(science_groups) == 1 else None
+            )
+            from pyfosc.project import atomic_json_write
+            atomic_json_write(Path('myfosc.json'), settings)
+            if len(science_groups) != 1:
+                print('Multiple run groups found; select one with pyfosc run --group.')
         print('Copying raw files finished.')
     except FileNotFoundError:
         print('File not found. The files might '+

@@ -45,7 +45,7 @@ logger.propagate = False
 
 class Extract1dSpec:
     def __init__(self, ic_2dspec=None, filenames=None, data_dir=None, disp_axis=None,
-                 trace_list=None, qa_dir=None):
+                 trace_list=None, qa_dir=None, output_dir=None):
         if ic_2dspec is not None:
             if not isinstance(ic_2dspec, (ImageFileCollection, FOSCFileCollection)):
                 raise ValueError(
@@ -63,6 +63,9 @@ class Extract1dSpec:
         self.telescope = ic_2dspec.telescope
         self.filenames = ic_2dspec.files
         self.data_dir = ic_2dspec.location
+        self.stable_names = output_dir is not None
+        self.output_dir = Path(output_dir or self.data_dir)
+        self.output_dir.mkdir(parents=True, exist_ok=True)
         if disp_axis is None:
             disp_axis = ic_2dspec.parameters['disp_axis']
         self.disp_axis = disp_axis
@@ -176,7 +179,14 @@ class Extract1dSpec:
             sp_hdr['BANDID3'] = 'background - background fit'                                         
             sp_hdr['BANDID4'] = 'sigma - background fit, weights variance, clean no'  
             sp_hdr['APNUM1'] = f'1 1 {trace.trace.data[0]:.2f} {trace.trace.data[-1]:.2f}'
-            sp_hdu.writeto(f'{self.data_dir}/a{fname}', overwrite=True)
+            output_name = fname if self.stable_names else f'a{fname}'
+            output_path = self.output_dir / output_name
+            if self.stable_names:
+                temp = output_path.with_name(f'.{output_path.stem}.tmp{output_path.suffix}')
+                sp_hdu.writeto(temp, overwrite=True)
+                os.replace(temp, output_path)
+            else:
+                sp_hdu.writeto(output_path, overwrite=True)
             fig, axes = plt.subplots(nrows=2, figsize=(8, 8))
             im.plot_image(ax=axes[0])
             # imres = axes[0].imshow((im-bg).data, origin='lower', aspect='auto')
@@ -218,12 +228,20 @@ class Extract1dSpec:
             sp_hdr['CRVAL1'] = 1
             sp_hdr['CRPIX1'] = 1
             sp_hdr['CD1_1'] = 1
+            output_name = fname if self.stable_names else f'a{fname}'
+            output_path = self.output_dir / output_name
+            write_path = (
+                output_path.with_name(f'.{output_path.stem}.tmp{output_path.suffix}')
+                if self.stable_names else output_path
+            )
             write_1d_fits_spec(
-                f'{self.data_dir}/a{fname}', 
+                write_path,
                 flux=sp.flux.value, 
                 wvl=sp.spectral_axis.value, 
                 header=sp_hdr,
                 overwrite=True)
+            if self.stable_names:
+                os.replace(write_path, output_path)
             fig, ax = plt.subplots(figsize=(8, 4),
                                 subplot_kw={'projection': sp.wcs})
             sp.plot(axes=ax)

@@ -1,5 +1,6 @@
 #!/usr/bin/env python
 import os
+import argparse
 from pathlib import Path
 from typing import Dict, List
 from astropy.nddata import CCDData
@@ -28,7 +29,7 @@ def _params_from_settings(settings: Dict) -> Dict:
         params.update({'trimsec': '[26:250,165:2800]', 'disp_axis': 0, 'overscan': False})
     elif tel == 'LJT':
         # LJT-G3 from notebooks
-        params.update({'trimsec': '[201:1400,2301:4130]',
+        params.update({'trimsec': '[651:1350,2301:4130]',
                        'biassec': '[10:40,1:4612]',
                        'disp_axis': 0, 'overscan': True})
     elif tel == 'XLT':
@@ -139,7 +140,10 @@ def extract_1d(params: Dict) -> None:
 
 
 def main(argv: list[str] | None = None) -> int:
-    pw = PreWaveCal('.')
+    parser = argparse.ArgumentParser()
+    parser.add_argument('--group')
+    args = parser.parse_args(argv)
+    pw = PreWaveCal('.', run_group=args.group)
     pw.discover()
     pw.build_master_bias()
     pw.calibrate_bias_and_trim()

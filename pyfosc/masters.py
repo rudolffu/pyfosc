@@ -24,7 +24,9 @@ class MasterBuilder:
                  work_dir=None,
                  list_frames=None, 
                  master_file=None,
-                 frametype=None):
+                 frametype=None,
+                 data_dir=None,
+                 output_dir=None):
         """
         Parameters
         ----------
@@ -43,15 +45,19 @@ class MasterBuilder:
             return 
         else:
             self.master_frame = None
-        if work_dir is None:
+        if data_dir is not None:
+            location = Path(data_dir)
+        elif work_dir is None:
             location = os.getcwd()
         else:
             location = Path(work_dir) / 'data'
-        if list_frames is not None:
+        frame_collection = None
+        if list_frames:
             frame_collection = ImageFileCollection(
                 location=location,
                 filenames=list_frames)
         self.work_dir = work_dir
+        self.output_dir = Path(output_dir) if output_dir is not None else None
         self.list_frames = list_frames
         self.frame_collection = frame_collection
         self.master_file = master_file
@@ -99,7 +105,7 @@ class MasterBuilder:
                                  framename=output_file, 
                                  frametype=self.frametype)
         if save is True:
-            output_dir = Path(self.work_dir) / 'MasterFrames'
+            output_dir = self.output_dir or Path(self.work_dir) / 'MasterFrames'
             output_dir.mkdir(parents=True, exist_ok=True)
             output_file = Path(output_dir) / output_file
             self.master_file = output_file
@@ -113,9 +119,10 @@ class MasterBias(MasterBuilder):
     def __init__(self, 
                  work_dir=None,
                  list_bias=None, 
-                 master_file=None):
+                 master_file=None, data_dir=None, output_dir=None):
         super().__init__(work_dir, list_bias,
-                         master_file, frametype='bias')
+                         master_file, frametype='bias', data_dir=data_dir,
+                         output_dir=output_dir)
 
 
 class MasterFlat(MasterBuilder):
@@ -123,9 +130,10 @@ class MasterFlat(MasterBuilder):
     def __init__(self, 
                  work_dir=None,
                  list_flat=None, 
-                 master_file=None):
+                 master_file=None, data_dir=None, output_dir=None):
         super().__init__(work_dir, list_flat,
-                         master_file, frametype='flat')
+                         master_file, frametype='flat', data_dir=data_dir,
+                         output_dir=output_dir)
         
     def make_bad_pixel_mask(self):
         """
@@ -148,7 +156,7 @@ class MasterFlat(MasterBuilder):
 class FlatNormalizer:
     """Class to normalize flat field frames."""
     def __init__(self, master_flat, disp_axis,
-                 work_dir=None):
+                 work_dir=None, output_dir=None):
         """
         Parameters
         ----------
@@ -166,6 +174,7 @@ class FlatNormalizer:
         if work_dir is None:
             work_dir = os.getcwd()
         self.work_dir = work_dir
+        self.output_dir = Path(output_dir) if output_dir is not None else None
         
     def response_correct(self, degree=25):
         """
@@ -265,7 +274,7 @@ class FlatNormalizer:
         normalized_flat.plot_image()
         self.normalized_flat = normalized_flat
         if save is True:
-            output_dir = Path(self.work_dir) / 'MasterFrames'
+            output_dir = self.output_dir or Path(self.work_dir) / 'MasterFrames'
             output_dir.mkdir(parents=True, exist_ok=True)
             output_file = Path(output_dir) / output_file
             normalized_flat.write(output_file, overwrite=True)

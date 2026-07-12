@@ -78,9 +78,21 @@ pyfosc init --telescope XLT --slit slit2.3 --grism G4 --copy-raw
 pyfosc run
 ```
 Notes:
-- Raw files are backed up under `raw/` and renamed copies placed in `data/`.
-- Intermediate products (bias/trim `_bc`, `f*`, `crf*`) are written under `data/`.
-- Master frames are saved under `MasterFrames/` at the repository root.
+- Raw files are backed up under `raw/` and immutable renamed inputs are placed in `input/`.
+- `pyfosc-manifest.json` is the authoritative inventory and partitions mixed nights into geometry/setup run groups.
+- Products keep their input filenames and are separated by stage under `reduced/<run-group>/`.
+- Use `pyfosc inspect` to list groups and calibration coverage; select a non-default group with `pyfosc run --group <id>`.
+
+The staged output tree contains `masters/`, `calibrated/`, `flat_corrected/`,
+`cosmic_cleaned/`, `extracted/`, `QAplots/`, `provenance/`, and an isolated
+`iraf_work/` directory. Existing projects without a `layout` section in
+`myfosc.json` continue in deprecated legacy mode. Preview migration without
+writing anything using:
+
+```bash
+pyfosc migrate-layout
+pyfosc migrate-layout --apply  # explicit migration; leaves data/ untouched
+```
 
 ### 2.2. Running the pipeline (currently in a python + pyraf hybrid mode)
 
@@ -100,7 +112,9 @@ The basic reduction steps include:
 
 #### 2.2.2. Wave/flux/telluric (IRAF)
 
-These steps are run by `pyfosc run`. To execute manually, run from the `data/` directory:
+These steps are run by `pyfosc run`. In staged projects they run inside
+`reduced/<run-group>/iraf_work/`, populated with compatibility copies and a
+handoff manifest. For a legacy project, execute them manually from `data/`:
 
 The remaining steps include:
 - Wavelength calibration
