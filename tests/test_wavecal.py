@@ -130,3 +130,15 @@ def test_refine_with_linelist_keeps_a_good_solution():
     assert refined.rms_pix <= max(1.3 * sol.rms_pix, 0.3)
     # an empty list leaves the solution untouched
     assert wc.refine_with_linelist(tmpl.flux, sol, []) is sol
+
+
+def test_interactive_identifier_runs_headless():
+    import matplotlib
+    matplotlib.use("Agg")
+    tmpl = TEMPLATES[0][1]
+    sol = wc.solve_from_template(tmpl.flux, tmpl)
+    # with a non-interactive backend the window closes at once and the
+    # seeded lines are simply refitted
+    out = wc.identify_interactive(tmpl.flux, *wc.load_linelist("fear"), initial=sol)
+    assert out is not None and out.method == "interactive"
+    assert out.n_used >= sol.n_used - 2

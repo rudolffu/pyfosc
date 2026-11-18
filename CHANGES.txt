@@ -1,0 +1,12 @@
+2.0.0-alpha (unreleased)
+------------------------
+- Wavelength, flux and telluric calibration no longer need IRAF/PyRAF:
+  new modules pyfosc.specio, pyfosc.wavecal, pyfosc.fluxcal, pyfosc.telluric
+  and pyfosc.postcal.PostExtraction.
+- pyfosc.steps.{identlamp2m,reidentlamp2m,wavecal2m,telluric_base2m} rewritten
+  on top of them; `pyfosc run` and pyfosc_run.sh use only Python steps.
+- Lamp lines are identified by matching the packaged templates in database/;
+  a matplotlib window is the manual fallback.
+- Standard stars are recognised from the OBJECT keyword (--std-file/--star/--caldir
+  to override). Outputs are skipped when present (--overwrite to redo).
+- IRAF-based scripts under src/ are kept as legacy.
