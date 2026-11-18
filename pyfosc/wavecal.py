@@ -26,6 +26,15 @@ from scipy.signal import correlate, find_peaks
 from .paths import find_data_root
 from .specio import Spec1D
 
+__all__ = [
+    "Template", "WaveSolution", "WaveCalibrator", "read_identify_records",
+    "read_identify_feature_list", "lamp_kind", "list_templates", "load_linelist",
+    "gaussian", "subpix_peaks", "recenter_lines", "match_template", "fit_solution",
+    "solve_from_template", "auto_identify", "add_lines_from_list", "refine_with_linelist",
+    "rebin_flux",
+    "dispcor", "plot_solution", "identify_interactive",
+]
+
 TELESCOPE_PREFIX = {"XLT": "XL", "LJT": "LJ", "HCT": "HCT", "P200": "P200"}
 
 
@@ -327,6 +336,7 @@ class WaveSolution:
     lamp: str = ""
     kind: str = ""
     method: str = "auto"
+    score: float = np.nan  # template cross-correlation (1 = identical lamp)
 
     def __post_init__(self):
         self.coeffs = np.asarray(self.coeffs, dtype=float)
@@ -380,7 +390,8 @@ class WaveSolution:
                 f"degree {self.degree}, rms {self.rms:.3f} A ({self.rms_pix:.2f} pix), "
                 f"dispersion {self.dispersion:.3f} A/pix, "
                 f"range {self(0):.0f}-{self(self.npix - 1):.0f} A"
-                + (f", template {self.template}" if self.template else ""))
+                + (f", template {self.template}" if self.template else "")
+                + (f" (match {self.score:.2f})" if np.isfinite(self.score) else ""))
 
     def save(self, path) -> Path:
         path = Path(path)
@@ -390,6 +401,7 @@ class WaveSolution:
             "coeffs": self.coeffs.tolist(), "npix": self.npix,
             "pixel_origin": 0, "rms": self.rms, "template": self.template,
             "lamp": self.lamp, "kind": self.kind, "method": self.method,
+            "score": None if not np.isfinite(self.score) else float(self.score),
             "lines": [
                 {"pixel": float(p), "wavelength": float(w), "name": n, "used": bool(u)}
                 for p, w, n, u in zip(self.pixels, self.wavelengths, self._names(), self.used)
@@ -414,7 +426,8 @@ class WaveSolution:
             names=[ln.get("name", "") for ln in lines],
             rms=d.get("rms", np.nan), template=d.get("template", ""),
             lamp=d.get("lamp", ""), kind=d.get("kind", ""),
-            method=d.get("method", "auto"))
+            method=d.get("method", "auto"),
+            score=np.nan if d.get("score") is None else d["score"])
 
 
 def fit_solution(pixels, wavelengths, npix: int, degree: int = 4, sigma: float = 3.0,
@@ -478,12 +491,18 @@ def solve_from_template(flux, template: Template, fwidth: float = 10.0,
     names = [template.names[i] for i in np.flatnonzero(ok)]
     return fit_solution(pix, template.wavelengths[ok], npix=n, degree=degree,
                         names=names, template=template.name, kind=template.kind,
-                        method="auto")
+                        method="auto", score=match["score"])
 
 
 def auto_identify(flux, templates: Sequence[Template], fwidth: float = 10.0,
                   degree: int = 4) -> Optional[WaveSolution]:
-    """Try every template and return the best solution (or None)."""
+    """Try every template and return the best solution (or None).
+
+    Good solutions from the template that resembles the lamp most (highest
+    cross-correlation, in steps of 0.05) win; the number of lines and the
+    scatter break ties. A template of the same grism and slit shares the
+    lamp's line blends, so its identifications transfer most reliably.
+    """
     best: Optional[WaveSolution] = None
     for tmpl in templates:
         sol = solve_from_template(flux, tmpl, fwidth=fwidth, degree=degree)
@@ -492,12 +511,14 @@ def auto_identify(flux, templates: Sequence[Template], fwidth: float = 10.0,
         if best is None:
             best = sol
             continue
-        # prefer good solutions, then more lines, then lower scatter
-        key_new = (sol.is_good(), sol.n_used, -sol.rms_pix)
-        key_old = (best.is_good(), best.n_used, -best.rms_pix)
-        if key_new > key_old:
+        if _rank(sol) > _rank(best):
             best = sol
     return best
+
+
+def _rank(sol: "WaveSolution"):
+    score = sol.score if np.isfinite(sol.score) else 0.0
+    return (sol.is_good(), round(score / 0.05), sol.n_used, -sol.rms_pix)
 
 
 def add_lines_from_list(flux, solution: WaveSolution, list_waves, list_names=None,
@@ -532,6 +553,30 @@ def add_lines_from_list(flux, solution: WaveSolution, list_waves, list_names=Non
             wav.append(float(list_waves[j]))
             nam.append(list_names[j])
     return np.asarray(pix), np.asarray(wav), nam
+
+
+def refine_with_linelist(flux, solution: WaveSolution, list_waves, list_names=None,
+                         fwidth: float = 10.0, tol_pix: float = 1.0,
+                         degree: Optional[int] = None) -> WaveSolution:
+    """Add catalogue lines to a solution and refit, keeping it only if still good.
+
+    Templates can lack identified lines over wide wavelength ranges; filling
+    those gaps from the line list constrains the polynomial there.
+    """
+    if list_waves is None or len(list_waves) == 0:
+        return solution
+    pix, wav, nam = add_lines_from_list(flux, solution, list_waves, list_names,
+                                        fwidth=fwidth, tol_pix=tol_pix)
+    if len(pix) <= solution.n_used:
+        return solution
+    new = fit_solution(pix, wav, npix=solution.npix,
+                       degree=solution.degree if degree is None else degree, names=nam,
+                       template=solution.template, lamp=solution.lamp, kind=solution.kind,
+                       method=solution.method)
+    limit = max(1.3 * solution.rms_pix, 0.3)
+    if new.is_good() and new.n_used > solution.n_used and new.rms_pix <= limit:
+        return new
+    return solution
 
 
 # ---------------------------------------------------------------------------

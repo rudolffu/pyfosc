@@ -1,118 +1,46 @@
 #!/usr/bin/env python
-import glob
-from pyraf import iraf
-import json
-import sys
-import os
-import platform
-from pathlib import Path
-from packaging import version
-from pyfosc.fits_headers import print_fits_keyword_table
-from pyfosc.paths import find_data_root
-if version.parse(platform.python_version()) < version.parse("3.0.0"):
-    print("Using raw_input")
-else:
-    raw_input = input
+"""Wavelength and flux calibration of extracted spectra (no IRAF).
 
-DATA_ROOT = find_data_root(module_path=Path(__file__), cwd=Path.cwd())
-myonedstds = os.path.abspath(os.path.join(DATA_ROOT, 'iraf_data/onedstds'))
-with open('myfosc.json') as file:
-    settings = json.loads(file.read())
-teles = settings['mysettings']['telescope']
-if teles == "XLT":
-    print("Settings for XLT will be used.")
-    extinct = os.path.join(DATA_ROOT, 'extinction/baoextinct.dat')
-    midname = 'XL'
-elif teles == "LJT":
-    print("Settings for LJT will be used.")
-    extinct = os.path.join(DATA_ROOT, 'extinction/LJextinct.dat')
-    midname = 'LJ'
-elif teles == "HCT":
-    print("Settings for HCT will be used.")
-    extinct = os.path.join(DATA_ROOT, 'extinction/LJextinct.dat')
-    midname = 'HCT'
-elif teles == "P200":
-    print("Settings for P200 will be used.")
-    side = settings['mysettings']['side']
-    extinct = 'onedstds$kpnoextinct.dat'
-    midname = 'P200' + side
-else:
-    print("Error detected.")
+``acrf*`` -> ``wacrf*`` (linear wavelength grid) -> ``cwacrf*`` (erg/cm2/s/A),
+using the lamp solutions from ``reidentlamp2m``/``identlamp2m`` and a
+standard star matched from the OBJECT keyword.
+"""
+from __future__ import annotations
 
-# check if the following files exist, if true, delete them
-list_wa = glob.glob('wa*.fit*')
-list_cwa = glob.glob('cwa*.fit*')
-list_tel = glob.glob('*tel*.fit*')
-list_to_del = list_wa + list_cwa + list_tel
-list_to_del.append('std')
-list_to_del.extend(glob.glob('sens.fit*'))
-list_to_del.extend(glob.glob('con*.fit*'))
-list_to_del.extend(glob.glob('calcon*.fit*'))
-if len(list_wa) > 0 or len(list_cwa) > 0 or len(list_tel) > 0:
-    delete = input("Files that are wave/flux calibrated exist. Delete them? (y/n): ")
-    if delete == 'y':
-        for f in list_to_del:
-            try:
-                os.remove(f)
-            except FileNotFoundError:
-                pass
-    else:
-        print("Please rename or delete the files and run the script again.")
-        sys.exit(1)
+from pyfosc.steps._postcal_cli import (PostExtraction, StandardNotFound, add_standard_args,
+                                       ask_for_standard, base_parser)
 
-inputlist = glob.glob('a*.fit*')
-iraf.onedspec()
-print('Add refspectra to header...')
-iraf.onedspec.refspectra.unlearn()
-for img in inputlist:
-    iraf.onedspec.refspectra(input=img, referen='af*.fit*',
-                             sort='', group='', time='no')
 
-print('Dispersion correction...')
-iraf.onedspec.dispcor.unlearn()
-for img in inputlist:
-    iraf.onedspec.dispcor(input=img, output='w' + img)
+def main(argv: list[str] | None = None) -> int:
+    parser = base_parser("pyfosc.steps.wavecal2m", __doc__.splitlines()[0])
+    add_standard_args(parser)
+    parser.add_argument("--order", type=int, default=6,
+                        help="Number of spline pieces of the sensitivity fit")
+    args = parser.parse_args(argv)
+    pe = PostExtraction(args.cwd, overwrite=args.overwrite)
+    try:
+        print("Dispersion correction...")
+        pe.apply_wavelength()
+        print("Make sensfunc...")
+        try:
+            pe.build_sensfunc(std_file=args.std_file, star=args.star, caldir=args.caldir,
+                              order=args.order)
+        except StandardNotFound as exc:
+            answer = ask_for_standard(pe)
+            if answer is None:
+                print(f"Warning: {exc}\nWavelength calibration is done; "
+                      "flux calibration was skipped.")
+                return 0
+            pe.build_sensfunc(std_file=answer[0], star=answer[1], caldir=args.caldir,
+                              order=args.order)
+        print("Flux calibration...")
+        pe.flux_calibrate()
+    except (FileNotFoundError, RuntimeError, ValueError, KeyError) as exc:
+        print(f"Error: {exc}")
+        return 1
+    print("---DONE---")
+    return 0
 
-olist1 = glob.glob('w*.fit*')
-print('Spectra after wavelength calibration:\n' + ", ".join(p for p in olist1))
-print_fits_keyword_table(glob.glob("wacrf*.fit*"), keyword="OBJECT")
-stdspec = str(raw_input("Enter filename of the standard star spectrum: "))
-starname = str(raw_input("Enter name of the standard star: "))
-starname = starname.lower()
-stdspec_name = Path(stdspec).name
 
-stdlist = glob.glob(myonedstds + "/**/" + starname + ".dat")
-dirnames = [os.path.basename(os.path.dirname(x)) for x in stdlist]
-print("The \"onedstds\" dirs containing your standard star:\n" +
-      ", ".join(p for p in dirnames))
-stddir = str(raw_input("Enter name of the onedstds directory: "))
-# mycaldir = "onedstds$" + stddir + '/'
-mycaldir = f"{myonedstds}/{stddir}/"
-
-iraf.twodspec()
-iraf.twodspec.longslit()
-print('Add std info to standard star spectrum...')
-iraf.twodspec.longslit.standard.unlearn()
-iraf.twodspec.longslit.standard(input=stdspec, output='std',
-                                extinct=extinct,
-                                caldir=mycaldir,
-                                star_name=starname)
-print('Make sensfunc...')
-iraf.twodspec.longslit.sensfunc.unlearn()
-iraf.twodspec.longslit.sensfunc(
-    standard='std', sensitiv='sens', extinct=extinct)
-
-print('Flux calibration...')
-olist2 = [Path(p).name for p in glob.glob('wac*.fit*')]
-try:
-    olist2.remove(stdspec_name)
-except ValueError:
-    pass
-iraf.twodspec.longslit.calibrate.unlearn()
-iraf.twodspec.longslit.calibrate.extinction = extinct
-for obj in olist2:
-    iraf.twodspec.longslit.calibrate(input=obj,
-                                     output='c' + obj,
-                                     sensitivity='sens')
-
-print('---DONE---')
+if __name__ == "__main__":  # pragma: no cover
+    raise SystemExit(main())

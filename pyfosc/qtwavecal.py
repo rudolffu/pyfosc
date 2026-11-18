@@ -18,8 +18,9 @@ try:
     from PyQt5.QtWidgets import QApplication, QFrame, QWidget, QInputDialog
     import pyqtgraph as pg
     from pyqtgraph.dockarea import DockArea, Dock
-except ImportError:
-    raise Warning("PyQt5 or pyqtgraph is not installed. GUI functions will not work.")
+except ImportError as exc:
+    raise ImportError(
+        "pyfosc.qtwavecal needs the optional GUI extras: pip install pyfosc[gui]") from exc
 
 
 class InteractiveSpectrumPlot(pg.PlotWidget):

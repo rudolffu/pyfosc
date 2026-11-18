@@ -94,22 +94,31 @@ def cmd_run(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(prog="pyfosc run", description="Run the standard reduction pipeline in the current directory")
     parser.add_argument("--cwd", default=os.getcwd(), help="Working directory (default: current directory)")
     parser.add_argument("--stop-on-error", action="store_true", help="Stop on the first failing step")
+    parser.add_argument("--std-file", help="Standard-star spectrum (wacrf*.fits); default: matched from OBJECT")
+    parser.add_argument("--star", help="Standard-star name as in iraf_data/onedstds")
+    parser.add_argument("--caldir", help="onedstds directory to take the star from")
+    parser.add_argument("--overwrite", action="store_true", help="Redo wavelength/flux/telluric outputs that exist")
     args = parser.parse_args(argv)
 
+    std_args: list[str] = []
+    for flag, value in (("--std-file", args.std_file), ("--star", args.star), ("--caldir", args.caldir)):
+        if value:
+            std_args += [flag, value]
+    redo = ["--overwrite"] if args.overwrite else []
     steps = [
-        # New ccdproc/astropy-based pre-wavecal pipeline
-        "pyfosc.steps.prewavecal",
-        # Existing IRAF-based wave calibration and telluric correction
-        "pyfosc.steps.identlamp2m",
-        "pyfosc.steps.wavecal2m",
-        "pyfosc.steps.telluric_base2m",
+        # ccdproc/astropy-based reductions up to 1D extraction
+        ("pyfosc.steps.prewavecal", []),
+        # astropy/scipy-based wavelength, flux and telluric calibration
+        ("pyfosc.steps.reidentlamp2m", redo),
+        ("pyfosc.steps.wavecal2m", redo + std_args),
+        ("pyfosc.steps.telluric_base2m", redo + std_args),
     ]
 
     ok = True
-    for mod in steps:
+    for mod, extra in steps:
         print(f"==> Running {mod}")
         try:
-            subprocess.run([sys.executable, "-m", mod], cwd=args.cwd, check=True)
+            subprocess.run([sys.executable, "-m", mod, *extra], cwd=args.cwd, check=True)
         except subprocess.CalledProcessError as e:
             print(f"Step failed: {mod} (exit {e.returncode})", file=sys.stderr)
             ok = False
@@ -154,13 +163,32 @@ def cmd_notebook(name: str = "prewavecal", cwd: str | None = None, open_nb: bool
                 "pw.extract_1d()\n"
             ]}
         ]
-        _write_ipynb(nb_path, cells)
-        print(f"Wrote {nb_path}")
-        if open_nb:
-            try:
-                subprocess.run([sys.executable, "-m", "jupyter", "notebook", str(nb_path)], check=False)
-            except Exception as exc:
-                print(f"Couldn't open Jupyter automatically: {exc}")
+    elif name == "postcal":
+        nb_path = base / "pyfosc_postcal.ipynb"
+        cells = [
+            {"cell_type": "markdown", "metadata": {}, "source": [
+                "# pyfosc post-extraction calibration\n",
+                "Wavelength solutions from the lamp spectra, dispersion correction, flux calibration with a standard star, and telluric correction.\n"
+            ]},
+            {"cell_type": "code", "metadata": {}, "execution_count": None, "outputs": [], "source": [
+                "from pyfosc.postcal import PostExtraction\n",
+                "pe = PostExtraction('.')\n",
+                "pe.identify_lamps()\n",
+                "pe.apply_wavelength()\n",
+                "pe.build_sensfunc()   # or build_sensfunc(std_file='wacrf....fits', star='feige34')\n",
+                "pe.flux_calibrate()\n",
+                "pe.telluric_correct()\n"
+            ]}
+        ]
+    else:
+        raise ValueError(f"Unknown notebook template: {name}")
+    _write_ipynb(nb_path, cells)
+    print(f"Wrote {nb_path}")
+    if open_nb:
+        try:
+            subprocess.run([sys.executable, "-m", "jupyter", "notebook", str(nb_path)], check=False)
+        except Exception as exc:
+            print(f"Couldn't open Jupyter automatically: {exc}")
     return 0
 
 
@@ -171,7 +199,7 @@ def main(argv: list[str] | None = None) -> int:
     subparsers.add_parser("init", help="Initialize a working directory for pyfosc")
     subparsers.add_parser("run", help="Run the standard reduction pipeline")
     nb = subparsers.add_parser("notebook", help="Generate a runnable Jupyter notebook for a step")
-    nb.add_argument("--name", choices=["prewavecal"], default="prewavecal", help="Notebook template to generate")
+    nb.add_argument("--name", choices=["prewavecal", "postcal"], default="prewavecal", help="Notebook template to generate")
     nb.add_argument("--cwd", default=os.getcwd(), help="Directory where to create the notebook")
     nb.add_argument("--open", action="store_true", dest="open_nb", help="Open notebook with Jupyter after creation")
 

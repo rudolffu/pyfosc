@@ -1,65 +1,34 @@
 #!/usr/bin/env python
-import glob
-from pyraf import iraf
-from astropy.io import fits
-import json
-import os
-from pathlib import Path
-from shutil import copy2
-import platform
-from packaging import version
-from pyfosc.paths import find_data_root
-if version.parse(platform.python_version()) < version.parse("3.0.0"):
-    print("Using raw_input")
-else:
-    raw_input = input
+"""Wavelength solutions for arc lamps from the packaged templates (no IRAF).
 
-CWD = Path.cwd()
+Each ``af*.fits`` lamp is matched to the reference lamps under ``database/``;
+solutions are saved as ``database/wavesol_<lamp>.json`` with QA plots.
+"""
+from __future__ import annotations
+
+from pyfosc.steps._postcal_cli import PostExtraction, base_parser
 
 
-DATA_ROOT = find_data_root(module_path=Path(__file__), cwd=CWD)
-dbpath = DATA_ROOT / 'database'
+def main(argv: list[str] | None = None) -> int:
+    parser = base_parser("pyfosc.steps.reidentlamp2m", __doc__.splitlines()[0])
+    parser.add_argument("--interactive", choices=["auto", "never", "always"], default="auto",
+                        help="When to open the matplotlib identifier (default: only if "
+                             "template matching fails and a terminal is attached)")
+    parser.add_argument("--refine", action="store_true",
+                        help="Add further lines from the line list after template matching")
+    parser.add_argument("--fwidth", type=float, default=10.0, help="Line width in pixels")
+    parser.add_argument("--degree", type=int, default=4, help="Degree of the Legendre fit")
+    args = parser.parse_args(argv)
+    pe = PostExtraction(args.cwd, overwrite=args.overwrite)
+    try:
+        pe.identify_lamps(interactive=args.interactive, fwidth=args.fwidth, degree=args.degree,
+                          refine=args.refine)
+    except (FileNotFoundError, RuntimeError) as exc:
+        print(f"Error: {exc}")
+        return 1
+    print("---DONE---")
+    return 0
 
-with open('myfosc.json') as file:
-    settings = json.loads(file.read())
-teles = settings['mysettings']['telescope']
-if teles == "XLT":
-    print("Settings for XLT will be used.")
-    lamplist = sorted(p.name for p in dbpath.glob('lamp_XL*fits'))
-    linelists = 'linelists$fear.dat'
-elif teles == "LJT":
-    print("Settings for LJT will be used.")
-    lamplist = sorted(p.name for p in dbpath.glob('lamp_LJ*fits'))
-    linelists = 'linelists$henear.dat'
-elif teles == "HCT":
-    print("Settings for HCT will be used.")
-    lamplist = sorted(p.name for p in dbpath.glob('lamp_HCT*fits'))
-    linelists = 'linelists$fear.dat'
-else:
-    print("Error detected.")
 
-print('Possible lamp spectrum(a) for references:\n' +
-      ", ".join(p for p in lamplist))
-refspec = str(
-    raw_input("Enter filename of the lamp spectrum you want to use: "))
-refspec1 = Path(refspec).with_suffix('.fits').name
-refspec_path = dbpath / refspec1
-if not refspec_path.exists():
-    raise FileNotFoundError(f"{refspec1} not found in {dbpath}")
-copy2(refspec_path, CWD)
-target_db = CWD / 'database'
-target_db.mkdir(exist_ok=True)
-idfile = dbpath / f"id{Path(refspec).stem}"
-copy2(idfile, target_db)
-iraf.onedspec()
-iraf.onedspec.reidentify.unlearn()
-# iraf.onedspec.reidentify.fwidth = 10
-iraf.onedspec.reidentify.coordli = linelists
-iraf.onedspec.reidentify(reference=refspec1,
-                         images='af*.fit*')
-
-iraf.onedspec.identify.unlearn()
-iraf.onedspec.identify.fwidth = 10
-iraf.onedspec.identify.coordli = linelists
-iraf.onedspec.identify(images='af*.fit*')
-print('---DONE---')
+if __name__ == "__main__":  # pragma: no cover
+    raise SystemExit(main())

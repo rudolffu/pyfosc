@@ -120,3 +120,13 @@ def test_dispcor_conserves_flux(sign):
     assert abs(peak_wave - sol(line_pix)) < abs(out.cdelt)
     # uniform noise stays close to its input level
     assert abs(np.median(out.sigma) - 3.0) < 0.3
+
+
+def test_refine_with_linelist_keeps_a_good_solution():
+    tmpl = next(t for _, t in TEMPLATES if "S1.8_201901" in t.name)
+    sol = wc.solve_from_template(tmpl.flux, tmpl)
+    refined = wc.refine_with_linelist(tmpl.flux, sol, *wc.load_linelist("fear"))
+    assert refined.is_good() and refined.n_used > sol.n_used
+    assert refined.rms_pix <= max(1.3 * sol.rms_pix, 0.3)
+    # an empty list leaves the solution untouched
+    assert wc.refine_with_linelist(tmpl.flux, sol, []) is sol
