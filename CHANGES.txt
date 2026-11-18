@@ -9,4 +9,8 @@
   a matplotlib window is the manual fallback.
 - Standard stars are recognised from the OBJECT keyword (--std-file/--star/--caldir
   to override). Outputs are skipped when present (--overwrite to redo).
+- XLT Fe-Ar solutions are refitted on the BFOSC atlas lines
+  (iraf_data/newlinelists/fear_bfosc_atlas.txt); magnitudes of standard stars are
+  converted with the IRAF constant (3.68e-20 erg/cm2/s/Hz at mag 0); the telluric
+  fit falls back to the airmass ratio unless it is significant.
 - IRAF-based scripts under src/ are kept as legacy.

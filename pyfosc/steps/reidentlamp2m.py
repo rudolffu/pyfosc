@@ -14,8 +14,11 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--interactive", choices=["auto", "never", "always"], default="auto",
                         help="When to open the matplotlib identifier (default: only if "
                              "template matching fails and a terminal is attached)")
-    parser.add_argument("--refine", action="store_true",
-                        help="Add further lines from the line list after template matching")
+    parser.add_argument("--refine", action="store_true", default=None,
+                        help="Refit on the line list after template matching (default: "
+                             "only for XLT Fe-Ar lamps, using the BFOSC atlas lines)")
+    parser.add_argument("--no-refine", dest="refine", action="store_false",
+                        help="Keep the lines of the matched template only")
     parser.add_argument("--fwidth", type=float, default=10.0, help="Line width in pixels")
     parser.add_argument("--degree", type=int, default=4, help="Degree of the Legendre fit")
     args = parser.parse_args(argv)

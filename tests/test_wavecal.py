@@ -132,6 +132,32 @@ def test_refine_with_linelist_keeps_a_good_solution():
     assert wc.refine_with_linelist(tmpl.flux, sol, []) is sol
 
 
+def test_refit_with_atlas_list_fills_the_gap():
+    # the 2023 template has no identified lines between 4880 and 6677 A
+    tmpl = next(t for _, t in TEMPLATES if "newG4" in t.name)
+    sol = wc.solve_from_template(tmpl.flux, tmpl)
+    assert wc.has_atlas_linelist("fear") and not wc.has_atlas_linelist("hene")
+    refit = wc.refit_with_linelist(tmpl.flux, sol, *wc.load_linelist("fear"))
+    assert refit is not sol and refit.is_good()
+    assert refit.max_gap < 0.5 * sol.max_gap
+    assert refit.rms_pix < 0.5
+    lo, hi = sol.gap_range()
+    inside = (refit.wavelengths > lo) & (refit.wavelengths < hi) & refit.used
+    assert inside.sum() >= 5
+    # too short a list leaves the solution untouched
+    assert wc.refit_with_linelist(tmpl.flux, sol, [5000.0, 6000.0]) is sol
+
+
+def test_fit_solution_max_dev_rejects_blends():
+    pix = np.linspace(50, 1650, 30)
+    wave = 4000 + 2.8 * pix
+    wave[[3, 9, 15, 21, 27]] += np.array([4.0, -4.0, 5.0, -3.5, 4.5])  # blends
+    loose = wc.fit_solution(pix, wave, npix=1700, degree=3)
+    tight = wc.fit_solution(pix, wave, npix=1700, degree=3, niter=10, max_dev=2.0)
+    assert tight.n_used == 25 and tight.rms < 1e-6
+    assert tight.rms <= loose.rms
+
+
 def test_interactive_identifier_runs_headless():
     import matplotlib
     matplotlib.use("Agg")

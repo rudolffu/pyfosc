@@ -93,3 +93,11 @@ def test_sensfunc_ignores_telluric_absorption():
     std = Spec1D(bands=[counts * dip], crval=wave[0], cdelt=2.0, calibrated=True)
     sf = fc.sensfunc(std, table, ext, airmass=1.1, exptime=100.0)
     assert abs(sf(7630.0) - 37.0) < 0.05
+
+
+def test_zero_point_matches_iraf_standard():
+    # IRAF "standard" converts magnitudes with fnu(0) = 3.68e-20 erg/cm2/s/Hz;
+    # an IRAF std file lists 7.3732e-13 for BD+28 4211 (subaru) at 4048.6 A.
+    table = fc.load_standard("bd284211", "subaru")
+    i = int(np.argmin(np.abs(np.asarray(table.wave) - 4048.6)))
+    assert abs(np.asarray(table.flam)[i] / 7.3732e-13 - 1) < 1e-3

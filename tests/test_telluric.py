@@ -66,3 +66,13 @@ def test_no_fit_uses_airmass_ratio():
     trans = tl.transmission(std, telescope="XLT")
     _, fit = tl.correct(std, trans, airmass_ratio=1.0, fit=False)
     assert fit.shift == 0.0 and fit.scales == {"O2": 1.0, "H2O": 1.0}
+
+
+def test_noisy_target_keeps_airmass_scaling():
+    rng = np.random.default_rng(11)
+    std = _spec(WAVE, STD_CONT * np.exp(-_absorption(WAVE)))
+    trans = tl.transmission(std, telescope="XLT")
+    obj_flux = 1e-16 * np.exp(-_absorption(WAVE)) * (1 + rng.normal(0, 0.15, len(WAVE)))
+    _, fit = tl.correct(_spec(WAVE, obj_flux), trans, airmass_ratio=1.1)
+    assert fit.shift == 0.0
+    assert fit.scales == {"O2": 1.1, "H2O": 1.1}

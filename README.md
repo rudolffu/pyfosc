@@ -109,15 +109,25 @@ What each step does:
   of a pixel. If no template matches (new grism or slit), run `identlamp2m` and mark the
   lines by hand: `m` mark a line and type its wavelength, `d` delete, `f` fit,
   `l` add lines from the line list, `q` accept.
+  For XLT Fe-Ar lamps the template only locates the lines: the solution is then refitted
+  on the lines of the BFOSC lamp atlas (`iraf_data/newlinelists/fear_bfosc_atlas.txt`),
+  which also covers 4900-6700 A where the packaged records have few lines
+  (`--no-refine` keeps the template's own lines). A warning is logged when a solution
+  has no lines over more than a fifth of the detector.
 - **Dispersion correction.** `acrf*` -> `wacrf*`, rebinned (flux conserving) to a linear
   wavelength grid using the lamp nearest in time. The four bands (optimal, raw, sky, sigma)
   are kept.
 - **Flux calibration.** The standard star is recognised from its `OBJECT` keyword among the
-  stars in `iraf_data/onedstds`; override with `--std-file`, `--star`, `--caldir`. The
+  stars in `iraf_data/onedstds`; override with `--std-file`, `--star`, `--caldir`
+  (the tables of one star differ by a few percent between directories, so pass
+  `--caldir` to reproduce an older reduction). The
   sensitivity function is saved as `sens.fits` (`QAplots/sensfunc.pdf`) and applied with
   the site extinction curve: `wacrf*` -> `cwacrf*` in erg/cm2/s/A.
 - **Telluric correction.** The transmission in the O2 and H2O bands is measured from the
   standard star and scaled to each target: `cwacrf*` -> `<OBJECT>_<tel><n>_<star>_tel.fits`.
+  The scaling is the airmass ratio; a fitted shift and O2/H2O scale replace it only when
+  they clearly smooth the spectrum, so faint targets are not fitted to noise
+  (`--no-fit` always uses the airmass ratio).
 
 Existing outputs are skipped on re-runs; pass `--overwrite` to redo them.
 

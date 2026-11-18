@@ -31,8 +31,7 @@ __all__ = [
     "read_identify_feature_list", "lamp_kind", "list_templates", "load_linelist",
     "gaussian", "subpix_peaks", "recenter_lines", "match_template", "fit_solution",
     "solve_from_template", "auto_identify", "add_lines_from_list", "refine_with_linelist",
-    "rebin_flux",
-    "dispcor", "plot_solution", "identify_interactive",
+    "refit_with_linelist", "has_atlas_linelist", "rebin_flux", "dispcor", "plot_solution", "identify_interactive",
 ]
 
 TELESCOPE_PREFIX = {"XLT": "XL", "LJT": "LJ", "HCT": "HCT", "P200": "P200"}
@@ -160,26 +159,42 @@ def list_templates(telescope: str, kind: Optional[str] = None,
     return [t for _, t in templates]
 
 
+FEAR_ATLAS_LIST = "fear_bfosc_atlas.txt"
+
+
+def has_atlas_linelist(kind: str, data_root=None) -> bool:
+    """True when a curated (atlas) line list exists for this lamp kind."""
+    if kind != "fear":
+        return False
+    root = Path(data_root) if data_root else find_data_root(module_path=Path(__file__))
+    return (root / "iraf_data" / "newlinelists" / FEAR_ATLAS_LIST).exists()
+
+
 def load_linelist(kind: str, data_root=None) -> Tuple[np.ndarray, List[str]]:
     """Return ``(wavelengths, names)`` of known lines for a lamp kind.
 
-    He-Ne(-Ar) lines come from ``iraf_data/newlinelists/henear_scidoc2215.txt``;
-    Fe-Ar lines are the union of the reference wavelengths in the packaged
-    identify records (originally taken from IRAF ``fear.dat``).
+    He-Ne(-Ar) lines come from ``iraf_data/newlinelists/henear_scidoc2215.txt``
+    plus the packaged identify records. Fe-Ar lines come from the BFOSC lamp
+    atlas (``fear_bfosc_atlas.txt``); only if that file is missing are they
+    the union of the identify records, which disagree with each other by
+    several Angstrom in places.
     """
     root = Path(data_root) if data_root else find_data_root(module_path=Path(__file__))
     lines: List[Tuple[float, str]] = []
-    if kind == "hene":
-        path = root / "iraf_data" / "newlinelists" / "henear_scidoc2215.txt"
-        if path.exists():
-            for raw in path.read_text().splitlines():
-                parts = raw.split()
-                if not parts or parts[0].startswith("#"):
-                    continue
-                try:
-                    lines.append((float(parts[0]), parts[1] if len(parts) > 1 else ""))
-                except ValueError:
-                    continue
+    listfile = {"hene": "henear_scidoc2215.txt", "fear": FEAR_ATLAS_LIST}.get(kind)
+    path = root / "iraf_data" / "newlinelists" / listfile if listfile else None
+    if path is not None and path.exists():
+        for raw in path.read_text().splitlines():
+            parts = raw.split()
+            if not parts or parts[0].startswith("#"):
+                continue
+            try:
+                lines.append((float(parts[0]), parts[1] if len(parts) > 1 else ""))
+            except ValueError:
+                continue
+        if kind == "fear":
+            lines.sort(key=lambda item: item[0])
+            return np.asarray([w for w, _ in lines]), [n for _, n in lines]
     for idfile in sorted((root / "database").glob("idlamp_*")):
         if _template_kind(idfile.name) != kind:
             continue
@@ -366,6 +381,20 @@ class WaveSolution:
         return float(self.rms / abs(self.dispersion)) if self.dispersion else np.inf
 
     @property
+    def max_gap(self) -> float:
+        """Widest stretch of pixels without a fitted line (edges excluded)."""
+        pix = np.sort(self.pixels[self.used])
+        return float(np.max(np.diff(pix))) if len(pix) > 1 else float(self.npix)
+
+    def gap_range(self) -> Tuple[float, float]:
+        """Wavelength limits (increasing) of the widest stretch without lines."""
+        pix = np.sort(self.pixels[self.used])
+        if len(pix) < 2:
+            return tuple(sorted((float(self(0)), float(self(self.npix - 1)))))
+        i = int(np.argmax(np.diff(pix)))
+        return tuple(sorted((float(self(pix[i])), float(self(pix[i + 1])))))
+
+    @property
     def residuals(self) -> np.ndarray:
         return self.wavelengths - self(self.pixels)
 
@@ -432,8 +461,13 @@ class WaveSolution:
 
 def fit_solution(pixels, wavelengths, npix: int, degree: int = 4, sigma: float = 3.0,
                  niter: int = 5, names: Optional[Sequence[str]] = None,
-                 **meta) -> WaveSolution:
-    """Sigma-clipped Legendre fit of wavelength against pixel."""
+                 max_dev: Optional[float] = None, **meta) -> WaveSolution:
+    """Sigma-clipped Legendre fit of wavelength against pixel.
+
+    ``max_dev`` (Angstrom) caps the clipping threshold; use it when many
+    of the input lines may be blends, which would otherwise inflate the
+    scatter estimate and survive the clipping.
+    """
     x = np.asarray(pixels, dtype=float)
     y = np.asarray(wavelengths, dtype=float)
     if len(x) < 2:
@@ -449,7 +483,10 @@ def fit_solution(pixels, wavelengths, npix: int, degree: int = 4, sigma: float =
         res = y - poly(x)
         scatter = 1.4826 * np.median(np.abs(res[used] - np.median(res[used])))
         scatter = max(scatter, 1e-6)
-        new_used = np.abs(res) <= sigma * max(scatter, np.std(res[used]) / 2.0)
+        limit = sigma * max(scatter, np.std(res[used]) / 2.0)
+        if max_dev is not None:
+            limit = min(limit, max_dev)
+        new_used = np.abs(res) <= limit
         if new_used.sum() < deg + 2 or np.array_equal(new_used, used):
             break
         used = new_used
@@ -575,6 +612,49 @@ def refine_with_linelist(flux, solution: WaveSolution, list_waves, list_names=No
                        method=solution.method)
     limit = max(1.3 * solution.rms_pix, 0.3)
     if new.is_good() and new.n_used > solution.n_used and new.rms_pix <= limit:
+        return new
+    return solution
+
+
+def refit_with_linelist(flux, solution: WaveSolution, list_waves, list_names=None,
+                        fwidth: float = 10.0, search: float = 2.5,
+                        degree: Optional[int] = None) -> WaveSolution:
+    """Replace the template's lines by a curated line list and refit.
+
+    The template solution only predicts where each catalogue line falls;
+    the lines are then re-centred and fitted on their catalogue wavelengths
+    (two passes). This removes the errors of the template's own
+    identifications and constrains ranges where the template has no lines.
+    Blends at the slit width show up as outliers and are clipped by the
+    fit. The result is kept only if it is good and leaves no wider gap
+    than the input solution.
+    """
+    list_waves = np.asarray(list_waves, dtype=float)
+    if len(list_waves) < 6:
+        return solution
+    list_names = list(list_names) if list_names is not None else [""] * len(list_waves)
+    flux = np.nan_to_num(np.asarray(flux, dtype=float))
+    deg = solution.degree if degree is None else degree
+    current = solution
+    new = None
+    for tol in (search, max(1.5, 0.8 * search)):
+        pred = current.pixel_of(list_waves)
+        inside = np.isfinite(pred) & (pred > fwidth / 2) & (pred < solution.npix - 1 - fwidth / 2)
+        centres = np.full(len(list_waves), np.nan)
+        if inside.any():
+            centres[inside] = recenter_lines(flux, pred[inside], fwidth=fwidth, search=tol)
+        ok = np.isfinite(centres)
+        if ok.sum() < max(6, deg + 2):
+            return solution
+        new = fit_solution(centres[ok], list_waves[ok], npix=solution.npix, degree=deg,
+                           niter=10, max_dev=0.75 * abs(solution.dispersion),
+                           names=[list_names[i] for i in np.flatnonzero(ok)],
+                           template=solution.template, lamp=solution.lamp,
+                           kind=solution.kind, method=solution.method, score=solution.score)
+        if not new.is_monotonic():
+            return solution
+        current = new
+    if new is not None and new.is_good() and new.max_gap <= solution.max_gap:
         return new
     return solution
 

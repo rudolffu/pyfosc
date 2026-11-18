@@ -139,13 +139,24 @@ class TelluricFit:
 
 
 def fit_telluric(wave, flux, trans_wave, trans, airmass_ratio: float = 1.0,
-                 max_shift_pix: float = 3.0, scale_bounds: Tuple[float, float] = (0.2, 3.0),
+                 max_shift_pix: float = 1.0, o2_range: Tuple[float, float] = (0.6, 1.7),
+                 h2o_range: Tuple[float, float] = (0.4, 2.5), min_gain: float = 3.0,
                  fit: bool = True) -> TelluricFit:
-    """Find the shift and per-species scale of the transmission for a target."""
+    """Find the shift and per-species scale of the transmission for a target.
+
+    The starting point, and the fallback, is the airmass ratio with no
+    shift. A fitted value replaces it only if it lies inside the allowed
+    range (``o2_range``/``h2o_range`` times the airmass ratio, shift within
+    ``max_shift_pix``), not on its edge, smooths the spectrum by more than
+    ``min_gain`` times what noise alone would give, and leaves no single
+    band rougher than before. Faint targets and
+    targets with emission lines inside a band therefore keep the plain
+    airmass scaling instead of a noise-driven fit.
+    """
     wave = np.asarray(wave, dtype=float)
     flux = np.asarray(flux, dtype=float)
     step = abs(float(np.median(np.diff(wave))))
-    x0 = float(np.clip(airmass_ratio, *scale_bounds))
+    x0 = float(np.clip(airmass_ratio, 0.2, 5.0))
     max_shift = max_shift_pix * step
 
     def species_model(species: str, shift: float, scale: float) -> np.ndarray:
@@ -170,25 +181,39 @@ def fit_telluric(wave, flux, trans_wave, trans, airmass_ratio: float = 1.0,
                 regions.append(sel)
         return regions
 
+    def accept(res, cost, start, bounds, regions) -> bool:
+        start_cost = cost(start)
+        if not np.isfinite(res.fun) or not np.isfinite(start_cost) or start_cost <= 0:
+            return False
+        for sel in regions:  # no single band may end up rougher
+            if cost(res.x, [sel]) > 1.1 * cost(start, [sel]):
+                return False
+        for value, (lo, hi) in zip(res.x, bounds):
+            if min(value - lo, hi - value) < 0.02 * (hi - lo):
+                return False
+        npix = sum(int(sel.sum()) for sel in regions)
+        return (start_cost - res.fun) / start_cost > min_gain * np.sqrt(2.0 / max(npix, 1))
+
     shift = 0.0
     scales = {"O2": x0, "H2O": x0}
     if fit:
         o2_regions = regions_for("O2")
         if o2_regions:
-            def cost_o2(p):
-                return _roughness(wave, flux / species_model("O2", p[0], p[1]), o2_regions)
-            res = minimize(cost_o2, [0.0, x0], method="Nelder-Mead",
-                           bounds=[(-max_shift, max_shift), scale_bounds],
+            def cost_o2(p, regions=o2_regions):
+                return _roughness(wave, flux / species_model("O2", p[0], p[1]), regions)
+            bounds = [(-max_shift, max_shift), (o2_range[0] * x0, o2_range[1] * x0)]
+            res = minimize(cost_o2, [0.0, x0], method="Nelder-Mead", bounds=bounds,
                            options={"xatol": 1e-3, "fatol": 1e-10, "maxiter": 400})
-            if np.isfinite(res.fun) and res.fun <= cost_o2([0.0, x0]):
+            if accept(res, cost_o2, [0.0, x0], bounds, o2_regions):
                 shift, scales["O2"] = float(res.x[0]), float(res.x[1])
         h2o_regions = regions_for("H2O")
         if h2o_regions:
-            def cost_h2o(p):
-                return _roughness(wave, flux / species_model("H2O", shift, p[0]), h2o_regions)
-            res = minimize(cost_h2o, [x0], method="Nelder-Mead", bounds=[scale_bounds],
+            def cost_h2o(p, regions=h2o_regions):
+                return _roughness(wave, flux / species_model("H2O", shift, p[0]), regions)
+            bounds = [(h2o_range[0] * x0, h2o_range[1] * x0)]
+            res = minimize(cost_h2o, [x0], method="Nelder-Mead", bounds=bounds,
                            options={"xatol": 1e-3, "fatol": 1e-10, "maxiter": 200})
-            if np.isfinite(res.fun) and res.fun <= cost_h2o([x0]):
+            if accept(res, cost_h2o, [x0], bounds, h2o_regions):
                 scales["H2O"] = float(res.x[0])
     model = species_model("O2", shift, scales["O2"]) * species_model("H2O", shift, scales["H2O"])
     return TelluricFit(shift=shift, scales=scales, model=model)

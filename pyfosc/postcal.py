@@ -96,16 +96,19 @@ class PostExtraction:
 
     # -- wavelength -------------------------------------------------------
     def identify_lamps(self, interactive: str = "auto", fwidth: float = 10.0,
-                       degree: int = 4, refine: bool = False) -> Dict[str, wc.WaveSolution]:
+                       degree: int = 4,
+                       refine: Optional[bool] = None) -> Dict[str, wc.WaveSolution]:
         """Find a wavelength solution for every lamp spectrum.
 
         interactive : ``'auto'`` (packaged templates; open the matplotlib
             identifier only when that fails and a terminal is attached),
             ``'never'``, or ``'always'`` (mark the first lamp of each kind by
             hand, then transfer that solution to the other lamps).
-        refine : also add lines from the full line list after template
-            matching. Off by default: the lists are dense and can introduce
-            misidentifications, so check the QA plot when enabling it.
+        refine : refit on the line list after template matching. ``None``
+            (default) does so only where a curated list exists (XLT Fe-Ar,
+            from the BFOSC atlas); ``True`` also adds lines from the denser
+            He-Ne-Ar list, which can introduce misidentifications, so check
+            the QA plot; ``False`` keeps the template's own lines.
         """
         if interactive not in ("auto", "never", "always"):
             raise ValueError("interactive must be 'auto', 'never' or 'always'")
@@ -131,7 +134,11 @@ class PostExtraction:
             if sol is not None:
                 sol.kind = kind
             good = sol is not None and sol.is_good()
-            if good and refine:
+            atlas = self.telescope == "XLT" and wc.has_atlas_linelist(kind)
+            if good and refine is not False and atlas:
+                sol = wc.refit_with_linelist(spec.flux, sol, *wc.load_linelist(kind),
+                                             fwidth=fwidth, degree=degree)
+            elif good and refine:
                 sol = wc.refine_with_linelist(spec.flux, sol, *wc.load_linelist(kind),
                                               fwidth=fwidth, degree=degree)
             if by_hand or (not good and interactive != "never" and _can_interact()):
@@ -157,6 +164,10 @@ class PostExtraction:
             wc.plot_solution(spec.flux, sol, self.qa_dir / f"wavesol_{lamp.stem}.pdf")
             self._register(lamp, spec, sol)
             logger.info(sol.summary())
+            if sol.max_gap > 0.2 * sol.npix:
+                lo, hi = sol.gap_range()
+                logger.warning(f"{lamp.name}: no lines between {lo:.0f} and {hi:.0f} A; "
+                               "the wavelength scale is poorly constrained there.")
         if not self.solutions:
             raise RuntimeError(
                 "No lamp spectrum could be wavelength calibrated. Run "

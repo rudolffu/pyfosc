@@ -24,7 +24,11 @@ from .paths import find_data_root
 from .specio import Spec1D
 
 C_ANGSTROM = 2.99792458e18  # speed of light in Angstrom/s
-AB_ZEROPOINT = 48.60
+# Flux density of a magnitude-0 source, erg/cm2/s/Hz. This is the constant
+# IRAF ``standard`` uses (zero point 48.5855 rather than 48.60); checked
+# against an IRAF ``std`` file, which it reproduces to 1e-4.
+FNU_ZERO = 3.68e-20
+AB_ZEROPOINT = -2.5 * np.log10(FNU_ZERO)
 
 # Preferred order when a star is tabulated in several directories.
 CALDIR_PREFERENCE = (
