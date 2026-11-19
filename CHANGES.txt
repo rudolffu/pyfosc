@@ -13,4 +13,14 @@
   (iraf_data/newlinelists/fear_bfosc_atlas.txt); magnitudes of standard stars are
   converted with the IRAF constant (3.68e-20 erg/cm2/s/Hz at mag 0); the telluric
   fit falls back to the airmass ratio unless it is significant.
+- Telluric correction reworked: the template takes a local continuum per band
+  (now also 8100-8400 A on XLT) and carries its error; scale and shift are fitted
+  per band with error bars; the scales of all targets of a night are combined and
+  given to faint targets; all usable standards are used (water interpolated in
+  time); a frame mislabelled as a standard is rejected; Paschen/He II lines of the
+  standard are removed from the template. New QA: telluric_template_<star>.pdf and
+  telluric_summary.csv. The O2 airmass exponent was measured on three XLT nights
+  and is consistent with 1 (default unchanged).
+- Documentation rewritten: README plus docs/ (installation, tutorial, checking
+  your reduction, calibration steps, files and headers, troubleshooting).
 - IRAF-based scripts under src/ are kept as legacy.

@@ -41,7 +41,9 @@
 - Post-extraction modules: `specio.py` (IRAF-style 1D/4-band files), `wavecal.py` (template matching, `WaveSolution`, `dispcor`), `fluxcal.py`, `telluric.py`, orchestrated by `postcal.PostExtraction`. Pixel coordinates are 0-based in code; IRAF `idlamp_*` records are 1-based.
 - Lamp lines are flat-topped (slit images); centre them with `wavecal.recenter_lines` (half-maximum centroid), not a Gaussian fit.
 - XLT Fe-Ar line wavelengths come from the BFOSC atlas list (`iraf_data/newlinelists/fear_bfosc_atlas.txt`), not from the `idlamp_*` records, which disagree with each other and with sky lines by several Angstrom between 4900 and 6700 A.
-- Flux zero point follows IRAF `standard` (`fluxcal.FNU_ZERO = 3.68e-20`); telluric fits must stay guarded (airmass ratio is the fallback).
+- Flux zero point follows IRAF `standard` (`fluxcal.FNU_ZERO = 3.68e-20`).
+- Telluric: template from local continua per band (`telluric.build_template`), one scale per band fitted by chi-square (`fit_telluric`), night-level prior from all targets (`night_prior`, applied in `PostExtraction.telluric_correct`). Scale bands separately: second-order light fills in the O2 A band of blue objects (factor ~1.3 for sdO standards with G4+385LP) but not the B band. Do not use the extraction sigma band as a weight (it is 15-40x too large); noise is estimated from the spectrum.
+- User documentation lives in `README.md` and `docs/`; keep both current when behaviour or options change.
 - IRAF is legacy only: `src/*.py` and `pyfosc/steps/{ccdotz,makereflat2m,doapall}.py` still import pyraf; do not add new pyraf imports.
 - No new third-party dependencies for calibration code: numpy, scipy, astropy, matplotlib only.
 - CLI fixes: `pyfosc-init` JSON building via `json.dumps`; `pyfosc notebook` now accepts `--name` with default.
