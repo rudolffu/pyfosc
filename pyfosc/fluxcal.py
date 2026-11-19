@@ -370,6 +370,41 @@ def sensfunc(std_spec: Spec1D, table: StandardTable, extinction, airmass: float,
                     airmass=airmass)
 
 
+def odd_standards(curves: Sequence[Tuple[np.ndarray, np.ndarray]], tolerance: float = 0.5,
+                  wave_range: Tuple[float, float] = (4500.0, 8000.0)) -> List[bool]:
+    """Flag standards whose sensitivity curve has a different shape from the others.
+
+    ``curves`` holds ``(wave, sensitivity in mag)`` for each standard of a
+    night. All real standards see the same instrument, so after removing a
+    grey offset (slit losses, thin cloud) the curves must agree; one that
+    deviates by more than ``tolerance`` mag is not the star its name says
+    (or was badly extracted). With three or more curves the reference is
+    their median; with two that disagree, the steeper one (larger range) is
+    flagged, since real response curves are peaked rather than steep.
+    """
+    n = len(curves)
+    flags = [False] * n
+    if n < 2:
+        return flags
+    lo = max(wave_range[0], max(np.nanmin(w) for w, _ in curves))
+    hi = min(wave_range[1], min(np.nanmax(w) for w, _ in curves))
+    if hi - lo < 500.0:
+        return flags
+    grid = np.linspace(lo, hi, 40)
+    shapes = []
+    for wave, sens in curves:
+        order = np.argsort(wave)
+        y = np.interp(grid, np.asarray(wave)[order], np.asarray(sens)[order])
+        shapes.append(y - np.median(y))
+    shapes = np.asarray(shapes)
+    if n == 2:
+        if np.max(np.abs(shapes[0] - shapes[1])) > tolerance:
+            flags[int(np.argmax(np.ptp(shapes, axis=1)))] = True
+        return flags
+    ref = np.median(shapes, axis=0)
+    return [bool(np.max(np.abs(shape - ref)) > tolerance) for shape in shapes]
+
+
 def calibrate(spec: Spec1D, sens_wave, sens_values, extinction, airmass: float,
               exptime: float) -> Spec1D:
     """Convert counts to erg/cm2/s/A, correcting for atmospheric extinction."""

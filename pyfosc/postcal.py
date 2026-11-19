@@ -255,6 +255,38 @@ class PostExtraction:
                 found.append((path, entry[0], entry[1]))
         return found
 
+    def checked_standards(self, caldir: Optional[str] = None) -> List[tuple]:
+        """Standards of :meth:`find_standards` whose sensitivity curve is plausible.
+
+        A frame whose curve has a different shape from the other standards of
+        the night (wrong object in the slit, mislabelled frame) is dropped
+        with a warning. With a single standard there is nothing to compare.
+        """
+        found = self.find_standards(caldir=caldir)
+        if len(found) < 2:
+            return found
+        extinction = fluxcal.load_extinction(self.telescope)
+        curves, usable = [], []
+        for path, name, found_dir in found:
+            spec = read_spec(path)
+            try:
+                table = fluxcal.load_standard(name, caldir=caldir or found_dir)
+                sf = fluxcal.sensfunc(spec, table, extinction,
+                                      airmass=fluxcal.get_airmass(spec.header, self.telescope),
+                                      exptime=fluxcal.get_exptime(spec.header))
+            except (KeyError, ValueError, FileNotFoundError) as exc:
+                logger.warning(f"{path.name}: cannot be used as a standard ({exc}).")
+                continue
+            curves.append((sf.wave, sf.sens))
+            usable.append((path, name, found_dir))
+        flags = fluxcal.odd_standards(curves)
+        for (path, name, _), odd in zip(usable, flags):
+            if odd:
+                logger.warning(
+                    f"{path.name}: labelled {name}, but its sensitivity curve does not match "
+                    "the other standard(s) of the night; not used as a standard.")
+        return [item for item, odd in zip(usable, flags) if not odd]
+
     def build_sensfunc(self, std_file: Optional[str] = None, star: Optional[str] = None,
                        caldir: Optional[str] = None, order: int = 6) -> Path:
         """Fit the sensitivity function from a standard star and write ``sens.fits``."""
@@ -269,7 +301,7 @@ class PostExtraction:
             name = star or str(read_spec(std_path).header.get("OBJECT", ""))
             table = fluxcal.load_standard(name, caldir=caldir)
         else:
-            candidates = self.find_standards(caldir=caldir)
+            candidates = self.checked_standards(caldir=caldir)
             if star is not None:
                 wanted = fluxcal.normalize_star_name(star)
                 candidates = [c for c in candidates if c[1] == wanted]
@@ -351,46 +383,162 @@ class PostExtraction:
                 "pass --std-file and --star.")
         return candidates[0][0], candidates[0][1]
 
+    def _telluric_standards(self, std_file: Optional[str], star: Optional[str],
+                            prefix: str) -> List[dict]:
+        """Standard exposures to build telluric templates from, primary first."""
+        primary, name = self._standard_for_telluric(std_file, star)
+        chosen = [(primary, name)]
+        if std_file is None:
+            for path, other, _ in self.checked_standards():
+                if path != primary and (star is None
+                                        or other == fluxcal.normalize_star_name(star)):
+                    chosen.append((path, other))
+        standards = []
+        for path, starname in chosen:
+            cal = path.with_name(prefix + path.name)
+            use = cal if (prefix and cal.exists()) else path
+            spec = read_spec(use)
+            standards.append({
+                "wfile": path.name, "path": use, "star": starname, "spec": spec,
+                "calibrated": use == cal and bool(prefix),
+                "airmass": fluxcal.get_airmass(spec.header, self.telescope),
+                "time": fluxcal.get_obstime(spec.header)})
+        return standards
+
+    @staticmethod
+    def _template_for(spec_time, standards: List[dict]):
+        """``(index of the nearest standard, its template blended in water)``."""
+        timed = [i for i, s in enumerate(standards) if s["time"] is not None]
+        if spec_time is None or len(timed) < 2:
+            return 0, standards[0]["template"].spec
+        gaps = {i: (spec_time - standards[i]["time"]).to_value("s") for i in timed}
+        near = min(timed, key=lambda i: abs(gaps[i]))
+        other_side = [i for i in timed if i != near and gaps[i] * gaps[near] < 0]
+        base = standards[near]
+        if not other_side:
+            return near, base["template"].spec
+        far = min(other_side, key=lambda i: abs(gaps[i]))
+        weight = abs(gaps[near]) / (abs(gaps[near]) + abs(gaps[far]))
+        return near, telluric.blend_water(base["template"].spec, standards[far]["template"].spec,
+                                          weight, base["airmass"], standards[far]["airmass"])
+
     def telluric_correct(self, std_file: Optional[str] = None, star: Optional[str] = None,
-                         fit: bool = True) -> List[Path]:
-        """Remove telluric absorption using the standard star.
+                         fit: bool = True, min_snr: float = 5.0, o2_exponent: float = 1.0,
+                         red_limit: Optional[float] = None) -> List[Path]:
+        """Remove telluric absorption using the standard star(s).
 
         Works on flux-calibrated spectra (``cwacrf*``) when present, otherwise
         on the wavelength-calibrated ones. Outputs are named
         ``<OBJECT>_<tel><n>_<star>_tel.fits``.
+
+        A transmission template is built from every usable standard exposure;
+        each target uses the one nearest in time (water interpolated in time
+        when two standards bracket it). The scale of every band is measured
+        on all targets first; their weighted mean per band is the night's
+        value, which faint targets receive and bright targets are combined
+        with (see :func:`pyfosc.telluric.fit_telluric`). ``fit=False`` applies
+        the airmass law only. ``o2_exponent`` sets that law for O2
+        (``airmass_ratio ** o2_exponent``); ``red_limit`` cuts the templates.
         """
-        std_w, starname = self._standard_for_telluric(std_file, star)
-        std_c = std_w.with_name("c" + std_w.name)
         calibrated = bool(self._glob("cwacrf*.fit*"))
-        std_path = std_c if (calibrated and std_c.exists()) else std_w
-        std = read_spec(std_path)
-        # a flux-calibrated hot star has a near power-law continuum; raw counts
-        # still carry the instrument response and need a more flexible fit
-        degree = 4 if std_path == std_c else 6
-        trans = telluric.transmission(std, telescope=self.telescope, degree=degree)
-        write_spec(self.data_dir / f"telluric_{starname}.fits", trans.bands, header=trans.header,
-                   crval=trans.crval, cdelt=trans.cdelt, calibrated=True)
-        std_airmass = fluxcal.get_airmass(std.header, self.telescope)
+        prefix = "c" if calibrated else ""
+        standards = self._telluric_standards(std_file, star, prefix)
         self.qa_dir.mkdir(parents=True, exist_ok=True)
+        for i, std in enumerate(standards):
+            # a flux-calibrated hot star has a near power-law continuum; raw counts
+            # still carry the instrument response and need a more flexible global fit
+            std["template"] = telluric.build_template(
+                std["spec"], telescope=self.telescope, red_limit=red_limit,
+                degree=4 if std["calibrated"] else 6)
+            tag = std["star"] if i == 0 else f"{std['star']}_{i + 1}"
+            tmpl = std["template"]
+            write_spec(self.data_dir / f"telluric_{tag}.fits", tmpl.spec.bands,
+                       header=tmpl.spec.header, crval=tmpl.spec.crval, cdelt=tmpl.spec.cdelt,
+                       calibrated=True)
+            telluric.plot_template(std["spec"], tmpl,
+                                   self.qa_dir / f"telluric_template_{tag}.pdf",
+                                   title=f"{std['path'].name} ({std['star']})")
+            bands = ", ".join(f"{b['key']} ({b['ew']:.1f} A)" for b in tmpl.info
+                              if b["status"] in ("local", "global"))
+            dropped = ", ".join(f"{b['key']}: {b['status']}" for b in tmpl.info
+                                if b["status"] in ("not significant", "no continuum"))
+            logger.info(f"Telluric template from {std['path'].name}: {bands or 'no bands'}"
+                        + (f"; left out: {dropped}" if dropped else ""))
+        std_files = {s["path"].name for s in standards}
         targets = self._glob("cwacrf*.fit*") if calibrated else self.wavecal_science
-        outputs = []
+
+        # first pass: measure every band on every target
+        jobs = []
         for idx, path in enumerate(targets, start=1):
             spec = read_spec(path)
+            which, trans = self._template_for(fluxcal.get_obstime(spec.header), standards)
+            ratio = fluxcal.get_airmass(spec.header, self.telescope) / standards[which]["airmass"]
+            first = telluric.fit_telluric(spec.wave, spec.flux, trans.wave, trans.flux,
+                                          airmass_ratio=ratio, fit=fit, min_snr=min_snr,
+                                          o2_exponent=o2_exponent)
+            jobs.append({"idx": idx, "path": path, "spec": spec, "which": which,
+                         "trans": trans, "ratio": ratio, "first": first})
+        # the night's scale of each band, per standard, from the science targets
+        night = {}
+        if fit:
+            for which in range(len(standards)):
+                fits = [j["first"] for j in jobs
+                        if j["which"] == which and j["path"].name not in std_files]
+                night[which] = telluric.night_prior(fits)
+                if night[which]:
+                    logger.info(
+                        f"Night-level scales relative to {standards[which]['star']}: "
+                        + ", ".join(f"{k} x{v[0]:.2f} (+/-{v[1]:.2f} per target)"
+                                    for k, v in night[which].items()))
+                for key, (factor, _) in night[which].items():
+                    if abs(factor - 1.0) > 0.15 and key.startswith("O2"):
+                        logger.warning(
+                            f"{key}: the targets need {factor:.2f}x the depth seen in "
+                            f"{standards[which]['star']}. O2 does not vary, so the band of "
+                            "the standard is probably filled in (second-order light of a "
+                            "blue star); the night-level value is applied.")
+
+        # second pass: correct, with the night's values as prior
+        outputs, rows = [], []
+        for job in jobs:
+            spec, path, first = job["spec"], job["path"], job["first"]
+            std = standards[job["which"]]
             obj = re.sub(r"[^\w.+-]+", "_", str(spec.header.get("OBJECT", "object")).strip())
-            out = self.data_dir / f"{obj}_{self.midname}{idx}_{starname}_tel.fits"
+            out = self.data_dir / f"{obj}_{self.midname}{job['idx']}_{std['star']}_tel.fits"
+            prior = {key: (factor * first.band_law[key], sigma * first.band_law[key])
+                     for key, (factor, sigma) in night.get(job["which"], {}).items()
+                     if key in first.band_law}
+            if path.name in std_files:
+                prior = {}
+            corrected, result = telluric.correct(
+                spec, job["trans"], airmass_ratio=job["ratio"], fit=fit, min_snr=min_snr,
+                o2_exponent=o2_exponent, prior=prior or None)
+            for key, scale in result.band_scales.items():
+                err = result.band_errors.get(key, np.nan)
+                rows.append([out.name, obj, f"{job['ratio']:.4f}", f"{result.shift:.3f}", key,
+                             f"{scale:.4f}", f"{err:.4f}" if np.isfinite(err) else "",
+                             result.band_source[key], std["star"]])
             if out.exists() and not self.overwrite:
                 outputs.append(out)
                 continue
-            ratio = fluxcal.get_airmass(spec.header, self.telescope) / std_airmass
-            corrected, result = telluric.correct(spec, trans, airmass_ratio=ratio, fit=fit)
-            corrected.header["TELSTD"] = (starname, "telluric standard")
+            corrected.header["TELSTD"] = (std["star"], "telluric standard")
             write_spec(out, corrected.bands, header=corrected.header, crval=corrected.crval,
                        cdelt=corrected.cdelt, calibrated=True)
             telluric.plot_correction(spec, corrected, result.model,
-                                     self.qa_dir / f"telluric_{out.stem}.pdf", title=out.name)
+                                     self.qa_dir / f"telluric_{out.stem}.pdf", title=out.name,
+                                     fit=result)
             outputs.append(out)
-            logger.info(f"{path.name} -> {out.name}  [shift {result.shift:+.2f} A, "
-                        f"O2 x{result.scales['O2']:.2f}, H2O x{result.scales['H2O']:.2f}]")
+            detail = ", ".join(f"{k} x{v:.2f} ({result.band_source[k]})"
+                               for k, v in result.band_scales.items()
+                               if std["template"].used(k))
+            logger.info(f"{path.name} -> {out.name}  [shift {result.shift:+.2f} A, {detail}]")
+        if rows:
+            import csv
+            with open(self.qa_dir / "telluric_summary.csv", "w", newline="") as fh:
+                writer = csv.writer(fh)
+                writer.writerow(["file", "object", "airmass_ratio", "shift_A", "band", "scale",
+                                 "error", "origin", "standard"])
+                writer.writerows(rows)
         return outputs
 
     def run(self, interactive: str = "auto", std_file: Optional[str] = None,
