@@ -101,3 +101,14 @@ def test_zero_point_matches_iraf_standard():
     table = fc.load_standard("bd284211", "subaru")
     i = int(np.argmin(np.abs(np.asarray(table.wave) - 4048.6)))
     assert abs(np.asarray(table.flam)[i] / 7.3732e-13 - 1) < 1e-3
+
+
+def test_odd_standards_flags_the_wrong_shape():
+    wave = np.linspace(4200, 8500, 60)
+    real = 36.0 - 1.5 * ((wave - 6300.0) / 2500.0) ** 2
+    grey = real - 0.4                                  # thin cloud: same shape
+    red = real + 2.5 * (wave - 4200.0) / 4300.0        # not the star it is labelled as
+    assert fc.odd_standards([(wave, real)]) == [False]
+    assert fc.odd_standards([(wave, real), (wave, grey)]) == [False, False]
+    assert fc.odd_standards([(wave, real), (wave, red)]) == [False, True]
+    assert fc.odd_standards([(wave, red), (wave, real), (wave, grey)]) == [True, False, False]

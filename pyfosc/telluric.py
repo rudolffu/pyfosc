@@ -56,6 +56,34 @@ STELLAR_LINES: Tuple[Tuple[float, float], ...] = (
     (8862.8, 20.0), (9014.9, 25.0), (9229.0, 25.0), (9546.0, 30.0), (10049.4, 30.0),
 )
 
+# Line series of hot standards with members inside telluric bands:
+# name -> ((upper level, wavelength), ...).
+STELLAR_SERIES: Dict[str, Tuple[Tuple[int, float], ...]] = {
+    "paschen": ((7, 10049.4), (8, 9546.0), (9, 9229.0), (10, 9014.9), (11, 8862.8),
+                (12, 8750.5), (13, 8665.0), (14, 8598.4)),
+    "heii_5": ((9, 8236.8), (10, 7592.7), (11, 7177.5), (12, 6890.9), (13, 6683.2),
+               (14, 6527.1), (15, 6406.4), (16, 6310.8)),
+}
+CLASS_SERIES = {"DA": ("paschen",), "sdB": ("paschen",), "B": ("paschen",),
+                "sdO": ("heii_5", "paschen"), "DO": ("heii_5",)}
+# Spectral class of the standards in iraf_data/onedstds that are in common use
+# (keys as returned by fluxcal.normalize_star_name).
+STANDARD_CLASS = {
+    "bd284211": "sdO", "feige34": "sdO", "feige67": "sdO", "feige110": "sdO", "hz44": "sdO",
+    "bd254655": "sdO", "hz21": "DO",
+    "g191b2b": "DA", "gd71": "DA", "gd153": "DA", "hz43": "DA", "hz4": "DA", "hz2": "DA",
+    "hz14": "DA", "gd50": "DA", "gd108": "sdB", "lb227": "DA", "g1932": "DA", "wolf1346": "DA",
+    "feige66": "sdB", "feige56": "B", "feige15": "B", "feige25": "B", "feige98": "B",
+    "bd332642": "B", "hiltner600": "B", "hiltner102": "B", "hd93521": "B", "bd174708": "B",
+}
+
+
+def series_for(star: Optional[str]) -> Tuple[str, ...]:
+    """Line series to look for in a standard (all of them if the star is unknown)."""
+    cls = STANDARD_CLASS.get((star or "").lower())
+    return CLASS_SERIES.get(cls, tuple(STELLAR_SERIES))
+
+
 # Reddest wavelength at which a band without clean windows on both sides
 # may still be taken from the global continuum fit.
 RED_LIMIT = {"LJT": 10000.0, "P200": 10000.0}
@@ -140,6 +168,83 @@ def band_continuum(wave, flux, band: Band, exclude: Optional[np.ndarray] = None,
     return region, cont, scatter
 
 
+def _measure_line(wave, flux, centre: float, half: float = 45.0):
+    """Depth and Gaussian sigma of an absorption line on a local linear continuum.
+
+    Returns ``(depth, sigma, depth error)`` or ``None``. The continuum comes
+    from the outer thirds of the window ``centre +/- half``.
+    """
+    sel = (wave >= centre - half) & (wave <= centre + half) & np.isfinite(flux)
+    if sel.sum() < 12:
+        return None
+    x, y = wave[sel], flux[sel]
+    outer = np.abs(x - centre) > 2.0 * half / 3.0
+    if outer.sum() < 4:
+        return None
+    cont = np.polyval(np.polyfit(x[outer], y[outer], 1), x)
+    if np.any(cont <= 0):
+        return None
+    profile = 1.0 - y / cont
+    noise = _robust_std(profile[outer])
+    core = np.abs(x - centre) <= half / 3.0
+    weight = np.clip(profile, 0, None)
+    if weight[core].sum() <= 0 or not np.isfinite(noise):
+        return None
+    depth = float(np.mean(np.sort(profile[core])[-3:]))
+    area = float(np.sum(weight[np.abs(x - centre) <= 2.0 * half / 3.0]) * abs(x[1] - x[0]))
+    if depth <= 0:
+        return None
+    sigma = area / (depth * np.sqrt(2.0 * np.pi))
+    return depth, float(sigma), float(max(noise, 1e-6))
+
+
+def remove_stellar_lines(wave, flux, star: Optional[str] = None, min_sigma: float = 3.0):
+    """Divide out stellar lines of the standard that fall inside telluric bands.
+
+    For each line series of the star's class the members outside the bands
+    are measured; when at least two are detected, the depth of the members
+    inside the bands is predicted from the run of log depth with series
+    number (extrapolated by at most three members) and removed as a
+    Gaussian of the median measured width. Returns ``(flux, report)`` where
+    ``report`` lists what was measured and removed. Nothing is changed when
+    the series is not detected.
+    """
+    wave = np.asarray(wave, dtype=float)
+    out = np.array(flux, dtype=float)
+    in_band = _band_mask(wave)
+    report: List[dict] = []
+    for name in series_for(star):
+        measured, inside = [], []
+        for level, centre in STELLAR_SERIES[name]:
+            if not (wave.min() + 20 < centre < wave.max() - 20):
+                continue
+            band_here = bool(np.interp(centre, wave, in_band.astype(float)) > 0.5)
+            if band_here:
+                inside.append((level, centre))
+                continue
+            window = (wave >= centre - 45) & (wave <= centre + 45)
+            if in_band[window].mean() > 0.2:
+                continue   # too close to a band to be measured cleanly
+            fit = _measure_line(wave, out, centre)
+            if fit is not None and fit[0] > min_sigma * fit[2]:
+                measured.append((level, centre, fit[0], fit[1]))
+        if len(measured) < 2 or not inside:
+            continue
+        levels = np.array([m[0] for m in measured], dtype=float)
+        slope, intercept = np.polyfit(levels, np.log([m[2] for m in measured]), 1)
+        width = float(np.median([m[3] for m in measured]))
+        for level, centre in inside:
+            if level < levels.min() - 3 or level > levels.max() + 3:
+                continue
+            depth = float(np.clip(np.exp(intercept + slope * level), 0.0, 0.6))
+            if depth < 0.005:
+                continue
+            out /= 1.0 - depth * np.exp(-0.5 * ((wave - centre) / width) ** 2)
+            report.append({"series": name, "level": level, "wave": centre,
+                           "depth": depth, "sigma": width})
+    return out, report
+
+
 @dataclass
 class TelluricTemplate:
     """Transmission spectrum with what is needed to judge it."""
@@ -147,6 +252,7 @@ class TelluricTemplate:
     spec: Spec1D                 # bands: transmission, its 1-sigma error
     continuum: np.ndarray        # continuum used inside each band region (NaN elsewhere)
     info: List[dict] = field(default_factory=list)   # one entry per band
+    stellar: List[dict] = field(default_factory=list)  # stellar lines divided out
 
     @property
     def wave(self) -> np.ndarray:
@@ -163,7 +269,8 @@ class TelluricTemplate:
 def build_template(std_spec: Spec1D, telescope: Optional[str] = None,
                    blue_limit: float = BLUE_LIMIT, red_limit: Optional[float] = None,
                    degree: int = 4, min_sigma: float = 5.0,
-                   stellar_lines: Sequence[Tuple[float, float]] = STELLAR_LINES
+                   stellar_lines: Sequence[Tuple[float, float]] = STELLAR_LINES,
+                   star: Optional[str] = None, remove_stellar: bool = True
                    ) -> TelluricTemplate:
     """Atmospheric transmission from a standard-star spectrum.
 
@@ -174,12 +281,17 @@ def build_template(std_spec: Spec1D, telescope: Optional[str] = None,
     scatter of its flanks. Bands without usable windows on both sides fall
     back to a global continuum fit (polynomial of ``degree`` in log-log),
     and only blueward of 8000 A (10000 A for LJT/P200). ``red_limit`` cuts
-    the template explicitly.
+    the template explicitly. Stellar lines of the standard inside the bands
+    are divided out first (:func:`remove_stellar_lines`; ``star`` selects the
+    line series of its spectral class).
     """
     if not std_spec.calibrated:
         raise ValueError("The standard-star spectrum must be wavelength calibrated.")
     wave = std_spec.wave
     flux = np.asarray(std_spec.flux, dtype=float)
+    stellar_report: List[dict] = []
+    if remove_stellar:
+        flux, stellar_report = remove_stellar_lines(wave, flux, star=star)
     step = abs(float(std_spec.cdelt))
     trans = np.ones_like(flux)
     err = np.zeros_like(flux)
@@ -256,7 +368,7 @@ def build_template(std_spec: Spec1D, telescope: Optional[str] = None,
     header["TELBANDS"] = (" ".join(i["key"] for i in kept)[:68], "bands in the template")
     spec = Spec1D(bands=[trans, err], header=header, crval=std_spec.crval,
                   cdelt=std_spec.cdelt, calibrated=True)
-    return TelluricTemplate(spec=spec, continuum=continuum, info=info)
+    return TelluricTemplate(spec=spec, continuum=continuum, info=info, stellar=stellar_report)
 
 
 def transmission(std_spec: Spec1D, telescope: Optional[str] = None,

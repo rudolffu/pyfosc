@@ -449,7 +449,7 @@ class PostExtraction:
             # still carry the instrument response and need a more flexible global fit
             std["template"] = telluric.build_template(
                 std["spec"], telescope=self.telescope, red_limit=red_limit,
-                degree=4 if std["calibrated"] else 6)
+                degree=4 if std["calibrated"] else 6, star=std["star"])
             tag = std["star"] if i == 0 else f"{std['star']}_{i + 1}"
             tmpl = std["template"]
             write_spec(self.data_dir / f"telluric_{tag}.fits", tmpl.spec.bands,
@@ -464,6 +464,9 @@ class PostExtraction:
                                 if b["status"] in ("not significant", "no continuum"))
             logger.info(f"Telluric template from {std['path'].name}: {bands or 'no bands'}"
                         + (f"; left out: {dropped}" if dropped else ""))
+            for line in tmpl.stellar:
+                logger.info(f"  stellar line removed from the template: {line['series']} "
+                            f"{line['wave']:.0f} A, depth {line['depth']:.3f}")
         std_files = {s["path"].name for s in standards}
         targets = self._glob("cwacrf*.fit*") if calibrated else self.wavecal_science
 

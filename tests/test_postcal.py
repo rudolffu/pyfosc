@@ -159,3 +159,68 @@ def test_steps_import_without_pyraf():
     assert "pyraf" not in sys.modules
     import pyfosc.cli  # noqa: F401
     import pyfosc.steps.identlamp2m  # noqa: F401
+
+
+def test_night_with_diluted_standard_and_mislabelled_frame(tmp_path, night):
+    """Several targets, a standard whose A band is filled in, and a wrong 'standard'."""
+    import csv
+    import shutil
+
+    work = tmp_path / "proj"
+    shutil.copytree(night["root"], work)
+    data = work / "data"
+    for path in list(data.glob("w*")) + list(data.glob("c*")) + list(data.glob("*_tel.fits")) \
+            + list(data.glob("telluric_*")) + [data / "sens.fits"]:
+        path.unlink()
+    for path in data.glob("acrf*"):
+        path.unlink()
+    wave = night["wave"]
+    n = len(wave)
+    dw = np.abs(np.gradient(wave))
+    ext = fc.load_extinction("XLT")
+    rng = np.random.default_rng(0)
+
+    def write(name, obj, flam, airmass, exptime, clock, dilute=0.0, noise=0.0):
+        trans = np.exp(-airmass * _tau(wave))
+        a_band = (wave > 7500) & (wave < 7760)
+        trans[a_band] = (trans[a_band] + dilute) / (1 + dilute)   # second-order light
+        rate = flam * 10 ** (0.4 * (_sens_true(wave) - airmass * ext(wave)))
+        counts = rate * exptime * dw * trans
+        if noise:
+            counts = counts * (1 + rng.normal(0, noise, n))
+        cube = np.array([counts, counts, np.full(n, 50.0), np.sqrt(np.abs(counts))])[:, None, :]
+        h = fits.Header({"OBJECT": obj, "AIRMASS": airmass, "EXPTIME": exptime,
+                         "DATE-OBS": f"2023-10-14T{clock}"})
+        fits.PrimaryHDU(cube.astype(np.float32), header=h).writeto(data / name)
+
+    red = night["std_flam"] * (wave / 5000.0) ** 6          # not a hot standard at all
+    write("acrfspec0002_Feige34_bc.fits", "Feige 34", night["std_flam"], 1.0, 60.0,
+          "12:10:00", dilute=0.25)
+    write("acrfspec0003_G191B2B_bc.fits", "G191-B2B", red, 1.1, 60.0, "12:20:00")
+    flat = np.full(n, 2e-15)
+    for i, (noise, airmass) in enumerate(((0.01, 1.0), (0.02, 1.2), (0.3, 1.1)), start=4):
+        write(f"acrfspec000{i}_T{i}_bc.fits", f"T{i}", flat, airmass, 900.0, f"12:{i}0:00",
+              noise=noise)
+
+    pe = PostExtraction(work, overwrite=True)
+    pe.apply_wavelength()
+    assert [name for _, name, _ in pe.checked_standards()] == ["feige34"]
+    pe.build_sensfunc()
+    assert read_spec(data / "sens.fits").header["STDNAME"] == "feige34"
+    pe.flux_calibrate()
+    outputs = pe.telluric_correct()
+    assert len(outputs) == 5
+    with open(work / "QAplots" / "telluric_summary.csv") as fh:
+        rows = {(r["object"], r["band"]): r for r in csv.DictReader(fh)}
+    # the bright targets measure the A band themselves; the faint one gets the
+    # night's value, which makes up for the diluted standard
+    for obj, airmass in (("T4", 1.0), ("T5", 1.2), ("T6", 1.1)):
+        a_scale = float(rows[(obj, "O2_7590")]["scale"]) / airmass
+        assert 1.25 < a_scale < 1.75, (obj, a_scale)
+        assert abs(float(rows[(obj, "O2_6860")]["scale"]) / airmass - 1.0) < 0.12
+    assert rows[("T6", "O2_7590")]["origin"] in ("night", "night+fit")
+    assert rows[("T4", "O2_7590")]["origin"] == "fit"
+    t4 = read_spec(next(data.glob("T4_XL*_feige34_tel.fits")))
+    sel = (t4.wave > 7590) & (t4.wave < 7700)
+    assert abs(np.median(t4.flux[sel]) / 2e-15 - 1) < 0.05
+    assert (work / "QAplots" / "telluric_template_feige34.pdf").exists()
