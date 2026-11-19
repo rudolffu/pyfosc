@@ -497,9 +497,9 @@ class PostExtraction:
                     if abs(factor - 1.0) > 0.15 and key.startswith("O2"):
                         logger.warning(
                             f"{key}: the targets need {factor:.2f}x the depth seen in "
-                            f"{standards[which]['star']}. O2 does not vary, so the band of "
-                            "the standard is probably filled in (second-order light of a "
-                            "blue star); the night-level value is applied.")
+                            f"{standards[which]['star']}. O2 itself does not vary: the band "
+                            "is filled in by second-order light in blue objects, so its "
+                            "depth depends on colour. The night-level value is applied.")
 
         # second pass: correct, with the night's values as prior
         outputs, rows = [], []
