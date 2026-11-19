@@ -30,6 +30,7 @@ from astropy import units as u
 from .fosc import FOSCFileCollection
 from .masters import MasterBias, MasterFlat, FlatNormalizer
 from .extraction import Extract1dSpec
+from .postcal import PostExtraction  # noqa: F401  (re-exported)
 
 
 @dataclass

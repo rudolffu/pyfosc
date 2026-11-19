@@ -16,8 +16,9 @@
 
 ## Command-Line Usage
 - `pyfosc init --telescope LJT --slit slit2.5 --grism G3 --copy-raw`
-- `pyfosc run` (new ccdproc/astropy pre-wavecal + IRAF wavecal).
-- `pyfosc notebook --name prewavecal` to scaffold a runnable notebook.
+- `pyfosc run` (pre-wavecal, then wavelength/flux/telluric calibration; no IRAF needed).
+- `pyfosc run --std-file wacrf....fits --star feige34 --overwrite` to choose the standard and redo outputs.
+- `pyfosc notebook --name prewavecal` (or `postcal`) to scaffold a runnable notebook.
 
 ## Python API (Notebook-Friendly)
 - Import: `from pyfosc.pipeline import PreWaveCal`.
@@ -26,6 +27,8 @@
   - `pw.build_master_flat()`; `pw.normalize_flat()`; `pw.apply_flat_correction()`;
   - `pw.cosmic_ray_clean()`; `pw.extract_1d()`.
   - Optional: `pw.extract_1d(guess=<row_index>)` to seed trace.
+- Post-extraction: `from pyfosc.postcal import PostExtraction`; `pe = PostExtraction('.')`;
+  `pe.identify_lamps()`; `pe.apply_wavelength()`; `pe.build_sensfunc()`; `pe.flux_calibrate()`; `pe.telluric_correct()`.
 
 ## Important Session Notes
 - Idempotent pipeline: re-runs skip already-processed files using filename patterns and FITS headers (`SUBTRACT_BIAS`, `TRIMSEC`, `FLAT_CORRECT`).
@@ -35,6 +38,12 @@
 - Gain/readnoise: prefer values from FITS headers (aliases: `GAIN`, `RDNOISE`/`RON`), falling back to instrument defaults only if absent.
 - Extraction inputs: use `FOSCFileCollection` (not `ImageFileCollection`) to enable `check_groups`/`set_parameters`.
 - list_backup_data: module-complete; renames, backs up to `raw/`, copies to `data/`, writes `imglist.csv`.
+- Post-extraction modules: `specio.py` (IRAF-style 1D/4-band files), `wavecal.py` (template matching, `WaveSolution`, `dispcor`), `fluxcal.py`, `telluric.py`, orchestrated by `postcal.PostExtraction`. Pixel coordinates are 0-based in code; IRAF `idlamp_*` records are 1-based.
+- Lamp lines are flat-topped (slit images); centre them with `wavecal.recenter_lines` (half-maximum centroid), not a Gaussian fit.
+- XLT Fe-Ar line wavelengths come from the BFOSC atlas list (`iraf_data/newlinelists/fear_bfosc_atlas.txt`), not from the `idlamp_*` records, which disagree with each other and with sky lines by several Angstrom between 4900 and 6700 A.
+- Flux zero point follows IRAF `standard` (`fluxcal.FNU_ZERO = 3.68e-20`); telluric fits must stay guarded (airmass ratio is the fallback).
+- IRAF is legacy only: `src/*.py` and `pyfosc/steps/{ccdotz,makereflat2m,doapall}.py` still import pyraf; do not add new pyraf imports.
+- No new third-party dependencies for calibration code: numpy, scipy, astropy, matplotlib only.
 - CLI fixes: `pyfosc-init` JSON building via `json.dumps`; `pyfosc notebook` now accepts `--name` with default.
 
 ## Coding Style & Naming Conventions
@@ -43,7 +52,7 @@
 - Prefer explicit imports; avoid wildcard imports. Add lightweight docstrings for public functions/classes.
 
 ## Testing Guidelines
-- No test suite exists yet. Use `pytest` with files under `tests/` named `test_*.py`.
+- Run `pytest -q`; tests live under `tests/` as `test_*.py` and use synthetic spectra plus the packaged templates.
 - Keep tests fast and data‑light; use small samples or fixtures rather than full FITS.
 - Example: `pip install pytest` then `pytest -q`.
 
